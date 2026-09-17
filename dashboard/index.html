@@ -1,0 +1,975 @@
+<title>Calidad del Aire Jalisco</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: light;
+    --bg:#e3e9ec;
+    --surface:#ffffff;
+    --surface-2:#f0f4f5;
+    --ink:#173d4c;
+    --ink-soft:#4c6b78;
+    --muted:#84a0aa;
+    --border:rgba(23,61,76,.13);
+    --border-strong:rgba(23,61,76,.24);
+    --accent:#00c4b4;
+    --accent-ink:#00453e;
+    --accent-soft:#d7f5f1;
+    --good:#0ca30c;
+    --warning:#e0a200;
+    --serious:#ec835a;
+    --critical:#d03b3b;
+    --extreme:#7a1f3d;
+    --nodata:#adbcc2;
+    --grid:#dbe3e6;
+    --shadow: 0 1px 2px rgba(23,61,76,.06), 0 8px 24px -12px rgba(23,61,76,.18);
+    font-family: "Montserrat", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --bg:#0c232b;
+      --surface:#123642;
+      --surface-2:#173d4c;
+      --ink:#eef6f7;
+      --ink-soft:#b9d2d9;
+      --muted:#7fa0ab;
+      --border:rgba(255,255,255,.12);
+      --border-strong:rgba(255,255,255,.22);
+      --accent:#12dcc9;
+      --accent-ink:#04241f;
+      --accent-soft:#0f4941;
+      --good:#3ecb52;
+      --warning:#ffc93d;
+      --serious:#ff9a6e;
+      --critical:#ff6b6b;
+      --extreme:#e2688f;
+      --nodata:#5f7c86;
+      --grid:#20505f;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px -14px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --bg:#0c232b;
+    --surface:#123642;
+    --surface-2:#173d4c;
+    --ink:#eef6f7;
+    --ink-soft:#b9d2d9;
+    --muted:#7fa0ab;
+    --border:rgba(255,255,255,.12);
+    --border-strong:rgba(255,255,255,.22);
+    --accent:#12dcc9;
+    --accent-ink:#04241f;
+    --accent-soft:#0f4941;
+    --good:#3ecb52;
+    --warning:#ffc93d;
+    --serious:#ff9a6e;
+    --critical:#ff6b6b;
+    --extreme:#e2688f;
+    --nodata:#5f7c86;
+    --grid:#20505f;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px -14px rgba(0,0,0,.55);
+  }
+
+  *{box-sizing:border-box;}
+  body{background:var(--bg); color:var(--ink); margin:0;}
+  .wrap{max-width:1240px; margin:0 auto; padding:28px 20px 64px;}
+
+  h1,h2,h3{font-family:inherit; margin:0; letter-spacing:-.01em;}
+  .eyebrow{
+    font-size:12px; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent-ink); background:var(--accent-soft); display:inline-flex; gap:6px; align-items:center;
+    padding:5px 12px; border-radius:100px;
+  }
+  .muted{color:var(--muted);}
+  .soft{color:var(--ink-soft);}
+
+  /* ---------- Header ---------- */
+  header.hero{
+    background: linear-gradient(135deg, var(--ink) 0%, #0e2b36 100%);
+    color:#eef6f7;
+    border-radius:24px;
+    padding:32px 32px 28px;
+    box-shadow:var(--shadow);
+    position:relative;
+    overflow:hidden;
+  }
+  header.hero::after{
+    content:"";
+    position:absolute; inset:0;
+    background:
+      radial-gradient(560px 280px at 88% -10%, rgba(0,196,180,.35), transparent 60%),
+      radial-gradient(420px 240px at 100% 100%, rgba(0,196,180,.18), transparent 60%);
+    pointer-events:none;
+  }
+  header.hero .top-row{display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; position:relative;}
+  header.hero h1{font-size:28px; font-weight:800; margin-top:12px; color:#fff;}
+  header.hero .subtitle{font-size:14.5px; color:#bcdbe1; margin-top:6px; max-width:640px;}
+  .draft-badge{
+    font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+    background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); color:#eef6f7;
+    padding:6px 12px; border-radius:100px; white-space:nowrap;
+  }
+  header.hero .summary{
+    margin-top:20px; padding-top:20px; border-top:1px solid rgba(255,255,255,.16);
+    font-size:14.5px; line-height:1.65; color:#dcedf0; max-width:920px; position:relative;
+  }
+
+  .kpi-row{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:22px; position:relative;}
+  .kpi{
+    background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14);
+    border-radius:16px; padding:16px 18px;
+  }
+  .kpi .val{font-size:26px; font-weight:800; color:#fff; font-variant-numeric:tabular-nums; display:flex; align-items:baseline; gap:4px;}
+  .kpi .val small{font-size:14px; font-weight:700; color:var(--accent);}
+  .kpi .lbl{font-size:12px; color:#a9cdd4; margin-top:4px; line-height:1.4;}
+  @media (max-width:760px){ .kpi-row{grid-template-columns:repeat(2,1fr);} }
+
+  /* ---------- Sections ---------- */
+  section{margin-top:28px;}
+  .section-head{display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:14px;}
+  .section-head h2{font-size:19px; font-weight:800;}
+  .section-head p{font-size:13px; color:var(--ink-soft); margin-top:4px; max-width:640px;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--border); border-radius:20px;
+    padding:20px; box-shadow:var(--shadow);
+  }
+  .grid-2{display:grid; grid-template-columns: 1.15fr 0.85fr; gap:16px; align-items:stretch;}
+  @media (max-width:900px){ .grid-2{grid-template-columns:1fr;} }
+
+  /* ---------- Controls ---------- */
+  .controls{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px;}
+  .search{
+    flex:1; min-width:160px; display:flex; align-items:center; gap:8px;
+    background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:8px 12px;
+  }
+  .search input{border:0; background:transparent; outline:none; font-family:inherit; font-size:13.5px; width:100%; color:var(--ink);}
+  .search svg{flex:none; opacity:.55;}
+  .chip{
+    font-size:12.5px; font-weight:600; padding:7px 13px; border-radius:100px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--ink-soft); cursor:pointer; white-space:nowrap; transition:.15s;
+  }
+  .chip:hover{border-color:var(--border-strong);}
+  .chip.active{background:var(--ink); color:#fff; border-color:var(--ink);}
+
+  /* ---------- Table ---------- */
+  .table-scroll{overflow-x:auto; border-radius:14px; border:1px solid var(--border);}
+  table{border-collapse:collapse; width:100%; font-size:13px; min-width:640px;}
+  thead th{
+    position:sticky; top:0; background:var(--surface-2); text-align:left; padding:10px 12px;
+    font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft);
+    border-bottom:1px solid var(--border); cursor:pointer; user-select:none; white-space:nowrap;
+  }
+  thead th:hover{color:var(--ink);}
+  thead th .arrow{opacity:.4; font-size:10px; margin-left:3px;}
+  tbody td{padding:9px 12px; border-bottom:1px solid var(--border); vertical-align:middle; white-space:nowrap;}
+  tbody tr{cursor:pointer; transition:background .12s;}
+  tbody tr:hover{background:var(--surface-2);}
+  tbody tr.active{background:var(--accent-soft);}
+  tbody tr:last-child td{border-bottom:0;}
+  .clave-tag{
+    font-weight:800; font-size:11.5px; background:var(--surface-2); border:1px solid var(--border);
+    padding:2px 7px; border-radius:6px; color:var(--ink);
+  }
+  .poll-icons{display:flex; gap:5px;}
+  .poll-icons span{
+    width:20px; height:20px; border-radius:6px; display:flex; align-items:center; justify-content:center;
+    font-size:10.5px; font-weight:800; color:#fff; background:var(--nodata);
+  }
+  .poll-icons span.yes{background:var(--accent); color:var(--accent-ink);}
+  .station-name{font-weight:700;}
+  .station-sub{font-size:11.5px; color:var(--muted); font-weight:500;}
+
+  /* ---------- Map ---------- */
+  .map-card{display:flex; flex-direction:column;}
+  .map-stage{position:relative; flex:1; min-height:380px; border-radius:14px; overflow:hidden;}
+  #mapSvg{width:100%; height:100%; display:block;}
+  .map-dot{cursor:pointer;}
+  .map-dot .cloud-shape{stroke:var(--surface); stroke-width:1.6;}
+  .map-dot .cloud-label{
+    font-size:9.5px; font-weight:700; fill:var(--ink); paint-order:stroke; stroke:var(--surface); stroke-width:3px;
+  }
+  .map-dot.active .cloud-shape{filter:brightness(0.85);}
+  .map-dot.active .cloud-ring{stroke:var(--ink); stroke-width:2;}
+
+  .map-zoom{
+    position:absolute; top:12px; left:12px; display:flex; flex-direction:column; gap:6px; z-index:5;
+  }
+  .map-zoom button{
+    width:32px; height:32px; border-radius:9px; border:1px solid var(--border); background:var(--surface);
+    color:var(--ink); font-size:16px; font-weight:700; font-family:inherit; cursor:pointer; display:flex;
+    align-items:center; justify-content:center; box-shadow:var(--shadow);
+  }
+  .map-zoom button:hover{background:var(--surface-2);}
+
+  .map-legend-card{
+    position:absolute; right:12px; bottom:12px; z-index:5; background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:12px 14px; box-shadow:var(--shadow); max-width:230px;
+  }
+  .map-legend-title{font-size:12px; font-weight:700; color:var(--ink); margin-bottom:8px;}
+  .map-legend-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px 14px;}
+  .map-legend-grid .sw{display:flex; align-items:center; gap:6px; font-size:11px; color:var(--ink-soft); white-space:nowrap;}
+  .map-legend-grid .sw i{width:11px; height:11px; border-radius:50%; display:inline-block; flex:none;}
+  @media (max-width:520px){
+    .map-legend-card{position:static; margin-top:10px; max-width:none;}
+    .map-legend-grid{grid-template-columns:1fr 1fr;}
+  }
+
+  /* ---------- Tooltip ---------- */
+  .viz-tooltip{
+    position:fixed; pointer-events:none; z-index:50; background:var(--ink); color:#fff;
+    font-size:12px; line-height:1.5; padding:9px 12px; border-radius:10px; box-shadow:0 10px 24px -8px rgba(0,0,0,.4);
+    max-width:230px; opacity:0; transform:translateY(4px); transition:opacity .1s, transform .1s;
+  }
+  .viz-tooltip.show{opacity:1; transform:translateY(0);}
+  .viz-tooltip b{color:var(--accent);}
+  .viz-tooltip .row{display:flex; justify-content:space-between; gap:14px;}
+
+  /* ---------- NOM heatmap ---------- */
+  .heat-scroll{overflow-x:auto; border-radius:14px; border:1px solid var(--border);}
+  table.heat{min-width:920px;}
+  table.heat thead th{position:sticky; top:0; z-index:2;}
+  table.heat thead th.station-col{text-align:center;}
+  table.heat td.param-cell{
+    position:sticky; left:0; background:var(--surface); z-index:1; white-space:normal; min-width:210px;
+    border-right:1px solid var(--border);
+  }
+  table.heat thead th.param-head{position:sticky; left:0; z-index:3; background:var(--surface-2); border-right:1px solid var(--border);}
+  .param-name{font-weight:700; font-size:12.5px;}
+  .param-limit{font-size:11px; color:var(--muted); margin-top:1px;}
+  .heat-cell{
+    width:64px; height:38px; text-align:center; font-weight:700; font-size:11.5px; color:#fff;
+    cursor:default;
+  }
+  .heat-cell.status-cumple{background:var(--good);}
+  .heat-cell.status-no_cumple{background:var(--critical);}
+  .heat-cell.status-DI{background:var(--nodata); color:var(--ink); font-weight:600;}
+  .heat-cell.status-FO{background:transparent; color:var(--muted); font-weight:600;
+    background-image:repeating-linear-gradient(45deg, var(--grid) 0 6px, transparent 6px 12px);}
+  .heat-cell.status-sin_equipo{background:transparent; color:var(--muted); border:1px dashed var(--border-strong);}
+  .heat-legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:14px; font-size:12px; color:var(--ink-soft);}
+  .heat-legend .sw{display:inline-flex; align-items:center; gap:6px;}
+  .heat-legend .sw i{width:13px; height:13px; border-radius:4px; display:inline-block;}
+
+  /* ---------- Days chart ---------- */
+  .days-chart .row-item{display:grid; grid-template-columns:90px 1fr; align-items:center; gap:10px; margin-bottom:9px;}
+  .days-chart .row-label{font-size:12.5px; font-weight:700; text-align:right;}
+  .days-chart .bar-track{position:relative; height:26px; border-radius:6px; overflow:hidden; background:var(--surface-2); display:flex;}
+  .days-chart .seg{height:100%; transition:opacity .12s;}
+  .days-chart .seg:hover{opacity:.75;}
+  .days-legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:16px; font-size:12px; color:var(--ink-soft);}
+  .days-legend .sw{display:inline-flex; align-items:center; gap:6px;}
+  .days-legend .sw i{width:13px; height:13px; border-radius:4px; display:inline-block;}
+
+  /* ---------- Tabs ---------- */
+  .tabbar{display:flex; gap:6px; background:var(--surface-2); padding:4px; border-radius:12px; width:fit-content;}
+  .tabbar button{
+    border:0; background:transparent; padding:8px 16px; border-radius:9px; font-family:inherit;
+    font-size:12.5px; font-weight:700; color:var(--ink-soft); cursor:pointer;
+  }
+  .tabbar button.active{background:var(--surface); color:var(--ink); box-shadow:var(--shadow);}
+
+  .trend-legend{display:flex; gap:18px; flex-wrap:wrap; margin-top:12px; font-size:12px; color:var(--ink-soft); align-items:center;}
+  .trend-legend .sw{display:inline-flex; align-items:center; gap:6px;}
+  .trend-legend .line-sw{width:18px; height:2px; background:var(--accent); display:inline-block; border-radius:2px;}
+  .trend-legend .dash-sw{width:18px; height:0; border-top:2px dashed var(--ink-soft); display:inline-block;}
+  .trend-legend .band-sw{width:18px; height:10px; background:var(--accent-soft); display:inline-block; border-radius:3px;}
+
+  footer{margin-top:36px; padding-top:18px; border-top:1px solid var(--border); font-size:11.5px; color:var(--muted); line-height:1.7;}
+
+  @media (max-width:520px){
+    header.hero{padding:22px 18px;}
+    header.hero h1{font-size:22px;}
+    .card{padding:16px;}
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="top-row">
+      <div>
+        <span class="eyebrow">SMCA Jalisco &middot; Zona Metropolitana de Guadalajara</span>
+        <h1>Informe Anual de Calidad del Aire 2026</h1>
+        <div class="subtitle">Panel de indicadores de la red de monitoreo atmosférico — estaciones, cumplimiento normativo, días por categoría de calidad del aire y tendencias mensuales de contaminantes.</div>
+      </div>
+      <span class="draft-badge">Propuesta &middot; datos de referencia</span>
+    </div>
+    <div class="summary" id="summaryText">
+      En 2026 la ZMG operó <b style="color:#fff">13 estaciones automáticas</b> distribuidas en <b style="color:#fff">6 municipios</b> — 3 de ellas de reciente incorporación a la red. De los parámetros con evaluación aplicable frente a las Normas Oficiales Mexicanas, solo <b style="color:#12e0cc">2 de cada 10</b> cumplieron el límite normado — concentrados en monóxido de carbono (CO) — mientras que ozono (O₃) y partículas (PM₁₀, PM₂.₅) registraron incumplimientos generalizados en las estaciones con datos suficientes. Dióxido de azufre (SO₂) y dióxido de nitrógeno (NO₂) no pudieron evaluarse por datos insuficientes o equipos fuera de operación, y las estaciones de nueva incorporación aún no cuentan con un ciclo anual completo de datos.
+    </div>
+    <div class="kpi-row">
+      <div class="kpi"><div class="val">13</div><div class="lbl">Estaciones automáticas activas</div></div>
+      <div class="kpi"><div class="val">6</div><div class="lbl">Municipios con cobertura de red</div></div>
+      <div class="kpi"><div class="val">6</div><div class="lbl">Contaminantes con NOM aplicable</div></div>
+      <div class="kpi"><div class="val">20<small>%</small></div><div class="lbl">Cumplimiento normativo global 2026</div></div>
+    </div>
+  </header>
+
+  <!-- ================= STATIONS + MAP ================= -->
+  <section>
+    <div class="section-head">
+      <div>
+        <h2>Red de monitoreo (SMCA)</h2>
+        <p>Estaciones que conforman el Sistema de Monitoreo de Calidad del Aire en 2026, su capacidad de medición y ubicación aproximada.</p>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="controls">
+          <div class="search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="stationSearch" placeholder="Buscar estación, clave o municipio…" />
+          </div>
+          <div id="muniChips" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+        </div>
+        <div class="table-scroll">
+          <table id="stationTable">
+            <thead>
+              <tr>
+                <th data-key="estacion">Estación <span class="arrow">↕</span></th>
+                <th data-key="municipio">Municipio <span class="arrow">↕</span></th>
+                <th data-key="anio">Inicio operación <span class="arrow">↕</span></th>
+                <th>Contaminantes medidos</th>
+              </tr>
+            </thead>
+            <tbody id="stationTbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card map-card">
+        <div class="map-stage">
+          <svg id="mapSvg" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet"></svg>
+          <div class="map-zoom">
+            <button id="zoomIn" title="Acercar">+</button>
+            <button id="zoomOut" title="Alejar">–</button>
+            <button id="zoomReset" title="Restablecer vista">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M22 12h-3M5 12H2"/></svg>
+            </button>
+          </div>
+          <div class="map-legend-card">
+            <div class="map-legend-title">Calidad del aire — hoy</div>
+            <div class="map-legend-grid" id="mapLegendGrid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= NOM COMPLIANCE ================= -->
+  <section>
+    <div class="section-head">
+      <div>
+        <h2>Cumplimiento de las NOM de calidad del aire, 2026</h2>
+        <p>Resultado por estación y parámetro normado frente al límite establecido en la normatividad vigente.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="heat-scroll">
+        <table class="heat" id="heatTable">
+          <thead>
+            <tr>
+              <th class="param-head">Parámetro &middot; periodo</th>
+              <!-- station headers injected -->
+            </tr>
+          </thead>
+          <tbody id="heatTbody"></tbody>
+        </table>
+      </div>
+      <div class="heat-legend">
+        <span class="sw"><i style="background:var(--good)"></i>Cumple con el límite</span>
+        <span class="sw"><i style="background:var(--critical)"></i>No cumple con el límite</span>
+        <span class="sw"><i style="background:var(--nodata)"></i>DI · Datos insuficientes</span>
+        <span class="sw"><i style="background-image:repeating-linear-gradient(45deg, var(--grid) 0 5px, transparent 5px 10px)"></i>FO · Fuera de operación</span>
+        <span class="sw"><i style="border:1px dashed var(--border-strong)"></i>Sin equipo de medición</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= DAYS BY CATEGORY ================= -->
+  <section>
+    <div class="section-head">
+      <div>
+        <h2>Días del año según categoría de calidad del aire</h2>
+        <p>Clasificación diaria por estación, según el índice de calidad del aire calculado a partir del contaminante seleccionado.</p>
+      </div>
+      <div class="tabbar" id="daysTabs">
+        <button data-p="pm10" class="active">PM₁₀</button>
+        <button data-p="pm25">PM₂.₅</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="days-chart" id="daysChart"></div>
+      <div class="days-legend">
+        <span class="sw"><i style="background:var(--good)"></i>Buena</span>
+        <span class="sw"><i style="background:var(--warning)"></i>Aceptable</span>
+        <span class="sw"><i style="background:var(--serious)"></i>Mala</span>
+        <span class="sw"><i style="background:var(--critical)"></i>Muy mala</span>
+        <span class="sw"><i style="background:var(--extreme)"></i>Extremadamente mala</span>
+        <span class="sw"><i style="background:var(--nodata)"></i>Datos insuficientes</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= MONTHLY TREND ================= -->
+  <section>
+    <div class="section-head">
+      <div>
+        <h2>Tendencia mensual por contaminante</h2>
+        <p>Promedio mensual, rango (mín–máx) entre estaciones y límite normado de referencia.</p>
+      </div>
+      <div class="tabbar" id="trendTabs">
+        <button data-p="pm10" class="active">PM₁₀</button>
+        <button data-p="pm25">PM₂.₅</button>
+        <button data-p="o3">O₃</button>
+        <button data-p="co">CO</button>
+      </div>
+    </div>
+    <div class="card">
+      <svg id="trendSvg" viewBox="0 0 900 340" preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto;"></svg>
+      <div class="trend-legend">
+        <span class="sw"><span class="line-sw"></span>Promedio mensual</span>
+        <span class="sw"><span class="band-sw"></span>Rango entre estaciones (mín–máx)</span>
+        <span class="sw"><span class="dash-sw"></span><span id="trendLimitLabel">Límite normado</span></span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Fuente de referencia: Informe Nacional de Calidad del Aire 2023 (INECC), Tablas 9.1 y 9.2, Sistema de Monitoreo de Calidad del Aire (SMCA) de Jalisco, proyectado a un escenario 2026 con la incorporación de 3 estaciones adicionales.
+    Los valores de este panel son una propuesta de visualización con datos de trabajo / mock — deben validarse contra la base de datos oficial antes de su publicación final.
+  </footer>
+</div>
+
+<div class="viz-tooltip" id="tooltip"></div>
+
+<script>
+(function(){
+
+  // ---------------------------------------------------------------
+  // DATA
+  // ---------------------------------------------------------------
+  var stations = [
+    {clave:"CEN", estacion:"Centro",        municipio:"Guadalajara",           anio:1993, lat:20.6738, lon:-103.3332, poll:{PM10:1,PM25:1,O3:1,SO2:1,NO2:1,CO:1}},
+    {clave:"MIR", estacion:"Miravalle",     municipio:"Guadalajara",           anio:1993, lat:20.6145, lon:-103.3433, poll:{PM10:1,PM25:1,O3:1,SO2:1,NO2:1,CO:1}},
+    {clave:"OBL", estacion:"Oblatos",       municipio:"Guadalajara",           anio:1993, lat:20.7005, lon:-103.2966, poll:{PM10:1,PM25:0,O3:1,SO2:1,NO2:1,CO:1}},
+    {clave:"VAL", estacion:"Vallarta",      municipio:"Guadalajara",           anio:1993, lat:20.6801, lon:-103.3986, poll:{PM10:1,PM25:1,O3:1,SO2:1,NO2:1,CO:1}},
+    {clave:"ATM", estacion:"Atemajac",      municipio:"Zapopan",               anio:1993, lat:20.7196, lon:-103.3554, poll:{PM10:1,PM25:0,O3:1,SO2:1,NO2:1,CO:1}},
+    {clave:"AGU", estacion:"Las Águilas",   municipio:"Zapopan",               anio:1993, lat:20.6309, lon:-103.4167, poll:{PM10:1,PM25:1,O3:1,SO2:1,NO2:1,CO:1}},
+    {clave:"PIN", estacion:"Las Pintas",    municipio:"El Salto",              anio:2011, lat:20.5767, lon:-103.3265, poll:{PM10:1,PM25:1,O3:1,SO2:1,NO2:1,CO:1}},
+    {clave:"LDO", estacion:"Loma Dorada",   municipio:"Tonalá",                anio:1993, lat:20.6317, lon:-103.2568, poll:{PM10:1,PM25:1,O3:1,SO2:1,NO2:1,CO:1}},
+    {clave:"SFE", estacion:"Santa Fe",      municipio:"Tlajomulco de Zúñiga",  anio:2013, lat:20.5289, lon:-103.3772, poll:{PM10:1,PM25:1,O3:1,SO2:1,NO2:1,CO:1}},
+    {clave:"TLA", estacion:"Tlaquepaque",   municipio:"Tlaquepaque",           anio:1993, lat:20.6409, lon:-103.3125, poll:{PM10:1,PM25:1,O3:1,SO2:1,NO2:1,CO:1}},
+    {clave:"COU", estacion:"Country",       municipio:"Zapopan",               anio:2019, lat:20.6981, lon:-103.3581, poll:{PM10:1,PM25:1,O3:1,SO2:1,NO2:1,CO:1}},
+    {clave:"SMA", estacion:"Santa Margarita", municipio:"Zapopan",             anio:2019, lat:20.7238, lon:-103.4317, poll:{PM10:1,PM25:1,O3:1,SO2:1,NO2:1,CO:1}},
+    {clave:"SAN", estacion:"Santa Anita",   municipio:"Tlajomulco de Zúñiga",  anio:2019, lat:20.5519, lon:-103.4472, poll:{PM10:1,PM25:1,O3:1,SO2:1,NO2:1,CO:1}}
+  ];
+  var aqiNow = {CEN:"buena",MIR:"buena",OBL:"buena",VAL:"buena",ATM:"buena",AGU:"buena",PIN:"buena",LDO:"buena",SFE:"buena",TLA:"buena",COU:"buena",SMA:"buena",SAN:"buena"};
+  var aqiMeta = {
+    buena:        {label:"Buena",                 color:"var(--good)"},
+    aceptable:    {label:"Aceptable",              color:"var(--warning)"},
+    mala:         {label:"Mala",                   color:"var(--serious)"},
+    muy_mala:     {label:"Muy mala",                color:"var(--critical)"},
+    ext_mala:     {label:"Extremadamente mala",    color:"var(--extreme)"},
+    mantenimiento:{label:"Mantenimiento y/o sin información", color:"var(--nodata)"}
+  };
+  var claves = stations.map(function(s){return s.clave;});
+
+  // NOM compliance rows. status: cumple | no_cumple | DI | FO | sin_equipo
+  function row(param, periodo, limite, unidad, vals){
+    return {param:param, periodo:periodo, limite:limite, unidad:unidad, vals:vals};
+  }
+  var nomRows = [
+    row("PM₁₀","24 horas","Percentil 99 ≤ 70","µg/m³", {CEN:["DI",null],MIR:["no_cumple",134],OBL:["FO",null],VAL:["DI",null],ATM:["FO",null],AGU:["no_cumple",78],PIN:["no_cumple",206],LDO:["no_cumple",144],SFE:["DI",null],TLA:["no_cumple",139],COU:["DI",null],SMA:["DI",null],SAN:["DI",null]}),
+    row("PM₁₀","Anual","Promedio ≤ 36","µg/m³", {CEN:["DI",null],MIR:["no_cumple",58],OBL:["FO",null],VAL:["DI",null],ATM:["FO",null],AGU:["no_cumple",40],PIN:["no_cumple",74],LDO:["no_cumple",67],SFE:["DI",null],TLA:["no_cumple",57],COU:["DI",null],SMA:["DI",null],SAN:["DI",null]}),
+    row("PM₂.₅","24 horas","Percentil 99 ≤ 41","µg/m³", {CEN:["DI",null],MIR:["no_cumple",66],OBL:["sin_equipo",null],VAL:["DI",null],ATM:["sin_equipo",null],AGU:["no_cumple",43],PIN:["DI",null],LDO:["DI",null],SFE:["DI",null],TLA:["no_cumple",90],COU:["DI",null],SMA:["DI",null],SAN:["DI",null]}),
+    row("PM₂.₅","Anual","Promedio ≤ 10","µg/m³", {CEN:["DI",null],MIR:["no_cumple",29],OBL:["sin_equipo",null],VAL:["DI",null],ATM:["sin_equipo",null],AGU:["no_cumple",17],PIN:["DI",null],LDO:["DI",null],SFE:["DI",null],TLA:["no_cumple",38],COU:["DI",null],SMA:["DI",null],SAN:["DI",null]}),
+    row("O₃","1 hora","Máx. de máx. diarios ≤ 0.090","ppm", {CEN:["no_cumple",0.141],MIR:["DI",null],OBL:["FO",null],VAL:["DI",null],ATM:["FO",null],AGU:["no_cumple",0.148],PIN:["no_cumple",0.159],LDO:["no_cumple",0.133],SFE:["DI",null],TLA:["DI",null],COU:["DI",null],SMA:["DI",null],SAN:["DI",null]}),
+    row("O₃","8 horas","Máx. de máx. de 8h ≤ 0.065","ppm", {CEN:["no_cumple",0.113],MIR:["DI",null],OBL:["FO",null],VAL:["DI",null],ATM:["FO",null],AGU:["no_cumple",0.114],PIN:["no_cumple",0.118],LDO:["no_cumple",0.095],SFE:["DI",null],TLA:["DI",null],COU:["DI",null],SMA:["DI",null],SAN:["DI",null]}),
+    row("CO","1 hora","Máximo ≤ 26","ppm", {CEN:["cumple",9.8],MIR:["cumple",5.3],OBL:["FO",null],VAL:["FO",null],ATM:["FO",null],AGU:["FO",null],PIN:["DI",null],LDO:["cumple",5.4],SFE:["FO",null],TLA:["FO",null],COU:["DI",null],SMA:["DI",null],SAN:["DI",null]}),
+    row("CO","8 horas","Máximo de 8h ≤ 9","ppm", {CEN:["cumple",6.9],MIR:["cumple",3.1],OBL:["FO",null],VAL:["FO",null],ATM:["FO",null],AGU:["FO",null],PIN:["DI",null],LDO:["cumple",2.3],SFE:["FO",null],TLA:["FO",null],COU:["DI",null],SMA:["DI",null],SAN:["DI",null]}),
+    row("NO₂","1 hora","Máximo ≤ 0.106","ppm", {CEN:["FO",null],MIR:["FO",null],OBL:["FO",null],VAL:["FO",null],ATM:["FO",null],AGU:["FO",null],PIN:["FO",null],LDO:["FO",null],SFE:["FO",null],TLA:["FO",null],COU:["DI",null],SMA:["DI",null],SAN:["DI",null]}),
+    row("NO₂","Anual","Promedio ≤ 0.021","ppm", {CEN:["FO",null],MIR:["FO",null],OBL:["FO",null],VAL:["FO",null],ATM:["FO",null],AGU:["FO",null],PIN:["FO",null],LDO:["FO",null],SFE:["FO",null],TLA:["FO",null],COU:["DI",null],SMA:["DI",null],SAN:["DI",null]}),
+    row("SO₂","1 hora","Percentil 99 ≤ 0.075","ppm", {CEN:["DI",null],MIR:["DI",null],OBL:["DI",null],VAL:["DI",null],ATM:["DI",null],AGU:["DI",null],PIN:["DI",null],LDO:["DI",null],SFE:["DI",null],TLA:["DI",null],COU:["DI",null],SMA:["DI",null],SAN:["DI",null]}),
+    row("SO₂","24 horas","Máximo ≤ 0.04","ppm", {CEN:["DI",null],MIR:["DI",null],OBL:["DI",null],VAL:["DI",null],ATM:["DI",null],AGU:["DI",null],PIN:["DI",null],LDO:["DI",null],SFE:["DI",null],TLA:["DI",null],COU:["DI",null],SMA:["DI",null],SAN:["DI",null]})
+  ];
+
+  // days-by-category mock data (sums to 365)
+  var daysData = {
+    pm10: {
+      order:["CEN","MIR","OBL","AGU","ATM","VAL","PIN","LDO","SFE","TLA","ZMG"],
+      values:{
+        CEN:{buena:130,aceptable:155,mala:10,muy_mala:0,ext_mala:0,DI:70},
+        MIR:{buena:45,aceptable:195,mala:100,muy_mala:20,ext_mala:5,DI:0},
+        OBL:{buena:0,aceptable:0,mala:0,muy_mala:0,ext_mala:0,DI:365},
+        AGU:{buena:285,aceptable:0,mala:60,muy_mala:15,ext_mala:5,DI:0},
+        ATM:{buena:0,aceptable:0,mala:0,muy_mala:0,ext_mala:0,DI:365},
+        VAL:{buena:0,aceptable:0,mala:0,muy_mala:0,ext_mala:0,DI:365},
+        PIN:{buena:35,aceptable:170,mala:130,muy_mala:25,ext_mala:5,DI:0},
+        LDO:{buena:30,aceptable:175,mala:130,muy_mala:25,ext_mala:5,DI:0},
+        SFE:{buena:180,aceptable:0,mala:0,muy_mala:0,ext_mala:0,DI:185},
+        TLA:{buena:60,aceptable:190,mala:100,muy_mala:15,ext_mala:0,DI:0},
+        ZMG:{buena:70,aceptable:195,mala:85,muy_mala:15,ext_mala:0,DI:0}
+      }
+    },
+    pm25: {
+      order:["AGU","CEN","LDO","MIR","PIN","SFE","TLA","VAL","ZMG"],
+      values:{
+        AGU:{buena:60,aceptable:100,mala:150,muy_mala:50,ext_mala:5,DI:0},
+        CEN:{buena:90,aceptable:150,mala:100,muy_mala:25,ext_mala:0,DI:0},
+        LDO:{buena:90,aceptable:130,mala:110,muy_mala:35,ext_mala:0,DI:0},
+        MIR:{buena:50,aceptable:210,mala:90,muy_mala:15,ext_mala:0,DI:0},
+        PIN:{buena:115,aceptable:200,mala:45,muy_mala:5,ext_mala:0,DI:0},
+        SFE:{buena:250,aceptable:90,mala:20,muy_mala:5,ext_mala:0,DI:0},
+        TLA:{buena:30,aceptable:145,mala:155,muy_mala:35,ext_mala:0,DI:0},
+        VAL:{buena:60,aceptable:190,mala:100,muy_mala:15,ext_mala:0,DI:0},
+        ZMG:{buena:65,aceptable:165,mala:110,muy_mala:25,ext_mala:0,DI:0}
+      }
+    }
+  };
+  var catOrder = ["buena","aceptable","mala","muy_mala","ext_mala","DI"];
+  var catColorVar = {buena:"--good",aceptable:"--warning",mala:"--serious",muy_mala:"--critical",ext_mala:"--extreme",DI:"--nodata"};
+  var catLabel = {buena:"Buena",aceptable:"Aceptable",mala:"Mala",muy_mala:"Muy mala",ext_mala:"Ext. mala",DI:"Sin datos"};
+
+  var months = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  var trendData = {
+    pm10:{unit:"µg/m³", limit:70, limitLabel:"Límite 24 h NOM (70 µg/m³)",
+      avg:[92,88,78,68,66,58,38,36,42,58,78,88],
+      min:[35,30,28,25,22,20,15,14,16,20,30,35],
+      max:[140,205,150,120,150,110,60,55,65,95,190,185],
+      maxSt:["PIN","AGU","SFE","LDO","SFE","TLA","LDO","LDO","PIN","PIN","PIN","PIN"]},
+    pm25:{unit:"µg/m³", limit:41, limitLabel:"Límite 24 h NOM (41 µg/m³)",
+      avg:[55,58,48,42,40,35,28,26,30,38,50,58],
+      min:[20,22,18,15,14,12,10,9,10,14,20,24],
+      max:[90,160,95,80,75,60,45,40,50,70,110,120],
+      maxSt:["TLA","AGU","LDO","AGU","PIN","TLA","TLA","TLA","TLA","PIN","PIN","PIN"]},
+    o3:{unit:"ppm", limit:0.090, limitLabel:"Límite 1 h NOM (0.090 ppm)",
+      avg:[0.075,0.080,0.085,0.082,0.078,0.070,0.060,0.058,0.062,0.068,0.072,0.070],
+      min:[0.040,0.042,0.045,0.044,0.040,0.035,0.030,0.028,0.032,0.036,0.038,0.040],
+      max:[0.120,0.115,0.140,0.118,0.115,0.100,0.090,0.085,0.110,0.112,0.130,0.125],
+      maxSt:["CEN","PIN","CEN","PIN","CEN","AGU","MIR","AGU","AGU","AGU","TLA","VAL"]},
+    co:{unit:"ppm", limit:9, limitLabel:"Límite 8 h NOM (9 ppm)",
+      avg:[1.8,1.6,1.4,1.3,1.2,1.1,1.0,1.0,1.1,1.3,1.6,2.0],
+      min:[0.6,0.5,0.5,0.4,0.4,0.4,0.3,0.3,0.4,0.5,0.6,0.7],
+      max:[3.5,5.0,3.0,2.8,2.5,2.2,2.0,1.9,2.1,2.6,3.2,6.9],
+      maxSt:["CEN","CEN","CEN","CEN","CEN","CEN","CEN","CEN","CEN","CEN","CEN","CEN"]}
+  };
+
+  // ---------------------------------------------------------------
+  // TOOLTIP
+  // ---------------------------------------------------------------
+  var tip = document.getElementById("tooltip");
+  function showTip(x,y,html){
+    tip.innerHTML = html;
+    tip.classList.add("show");
+    var r = tip.getBoundingClientRect();
+    var left = x + 14, top = y + 14;
+    if(left + r.width > window.innerWidth - 10) left = x - r.width - 14;
+    if(top + r.height > window.innerHeight - 10) top = y - r.height - 14;
+    tip.style.left = left+"px"; tip.style.top = top+"px";
+  }
+  function hideTip(){ tip.classList.remove("show"); }
+
+  // ---------------------------------------------------------------
+  // STATION TABLE + MAP
+  // ---------------------------------------------------------------
+  var activeClave = null;
+  var muniFilter = "Todos";
+  var sortKey = "estacion", sortDir = 1;
+  var searchTerm = "";
+
+  var municipios = ["Todos"].concat(Array.from(new Set(stations.map(function(s){return s.municipio;}))));
+  var muniChipsEl = document.getElementById("muniChips");
+  municipios.forEach(function(m){
+    var b = document.createElement("button");
+    b.className = "chip" + (m==="Todos" ? " active" : "");
+    b.textContent = m;
+    b.onclick = function(){
+      muniFilter = m;
+      Array.from(muniChipsEl.children).forEach(function(c){c.classList.remove("active");});
+      b.classList.add("active");
+      renderStations(); renderMap();
+    };
+    muniChipsEl.appendChild(b);
+  });
+
+  document.getElementById("stationSearch").addEventListener("input", function(e){
+    searchTerm = e.target.value.trim().toLowerCase();
+    renderStations(); renderMap();
+  });
+
+  document.querySelectorAll("#stationTable thead th[data-key]").forEach(function(th){
+    th.addEventListener("click", function(){
+      var k = th.getAttribute("data-key");
+      if(sortKey === k){ sortDir *= -1; } else { sortKey = k; sortDir = 1; }
+      renderStations();
+    });
+  });
+
+  function filteredStations(){
+    return stations.filter(function(s){
+      if(muniFilter !== "Todos" && s.municipio !== muniFilter) return false;
+      if(searchTerm){
+        var hay = (s.estacion+" "+s.clave+" "+s.municipio).toLowerCase();
+        if(hay.indexOf(searchTerm) === -1) return false;
+      }
+      return true;
+    }).sort(function(a,b){
+      var av = a[sortKey], bv = b[sortKey];
+      if(typeof av === "string") return av.localeCompare(bv) * sortDir;
+      return (av - bv) * sortDir;
+    });
+  }
+
+  var pollOrder = [["PM10","PM₁₀"],["PM25","PM₂.₅"],["O3","O₃"],["SO2","SO₂"],["NO2","NO₂"],["CO","CO"]];
+
+  function renderStations(){
+    var tbody = document.getElementById("stationTbody");
+    tbody.innerHTML = "";
+    filteredStations().forEach(function(s){
+      var tr = document.createElement("tr");
+      if(s.clave === activeClave) tr.classList.add("active");
+      var icons = pollOrder.map(function(p){
+        return '<span class="'+(s.poll[p[0]]?"yes":"")+'" title="'+p[1]+(s.poll[p[0]]?" — medido":" — sin equipo")+'">'+p[1].replace(/[₀-₉.]/g,"").slice(0,2)+'</span>';
+      }).join("");
+      tr.innerHTML =
+        '<td><div class="station-name">'+s.estacion+'</div><div class="station-sub"><span class="clave-tag">'+s.clave+'</span></div></td>'+
+        '<td>'+s.municipio+'</td>'+
+        '<td>'+s.anio+'</td>'+
+        '<td><div class="poll-icons">'+icons+'</div></td>';
+      tr.addEventListener("mouseenter", function(){ setActive(s.clave); });
+      tr.addEventListener("click", function(){ setActive(activeClave===s.clave ? null : s.clave); });
+      tbody.appendChild(tr);
+    });
+  }
+
+  function setActive(clave){
+    activeClave = clave;
+    document.querySelectorAll("#stationTbody tr").forEach(function(tr){ tr.classList.remove("active"); });
+    if(clave){
+      var idx = filteredStations().findIndex(function(s){return s.clave===clave;});
+      var tr = document.querySelectorAll("#stationTbody tr")[idx];
+      if(tr) tr.classList.add("active");
+    }
+    document.querySelectorAll(".map-dot").forEach(function(g){
+      g.classList.toggle("active", g.getAttribute("data-clave") === clave);
+    });
+  }
+
+  function nomFailCount(clave){
+    var n = 0;
+    nomRows.forEach(function(r){ if(r.vals[clave][0] === "no_cumple") n++; });
+    return n;
+  }
+
+  var mapScale = 1;
+  function renderMap(){
+    var svg = document.getElementById("mapSvg");
+    svg.innerHTML = "";
+    var W=400,H=400,pad=46;
+    var lats = stations.map(function(s){return s.lat;});
+    var lons = stations.map(function(s){return s.lon;});
+    var latMin=Math.min.apply(null,lats), latMax=Math.max.apply(null,lats);
+    var lonMin=Math.min.apply(null,lons), lonMax=Math.max.apply(null,lons);
+    function px(lon){ return pad + (lon-lonMin)/(lonMax-lonMin) * (W-2*pad); }
+    function py(lat){ return pad + (latMax-lat)/(latMax-latMin) * (H-2*pad); }
+
+    var ns = "http://www.w3.org/2000/svg";
+    function el(tag, attrs){
+      var e = document.createElementNS(ns, tag);
+      for(var k in attrs) e.setAttribute(k, attrs[k]);
+      return e;
+    }
+
+    svg.setAttribute("viewBox","0 0 "+W+" "+H);
+    svg.appendChild(el("rect",{x:0,y:0,width:W,height:H,fill:"var(--surface-2)"}));
+
+    var viewport = el("g",{id:"mapViewport", transform:"translate(200,200) scale("+mapScale+") translate(-200,-200)"});
+
+    // background grid (schematic streets)
+    for(var i=1;i<5;i++){
+      var gx = pad + (W-2*pad)*i/5;
+      var gy = pad + (H-2*pad)*i/5;
+      viewport.appendChild(el("line",{x1:gx,y1:pad*0.4,x2:gx,y2:H-pad*0.4,stroke:"var(--grid)","stroke-width":1}));
+      viewport.appendChild(el("line",{x1:pad*0.4,y1:gy,x2:W-pad*0.4,y2:gy,stroke:"var(--grid)","stroke-width":1}));
+    }
+    var cap = el("text",{x:W/2,y:H-14,"text-anchor":"middle",fill:"var(--muted)","font-size":9,"font-weight":600});
+    cap.textContent = "Zona Metropolitana de Guadalajara — mapa esquemático (no cartográfico)";
+    viewport.appendChild(cap);
+    var na = el("g",{transform:"translate("+(W-28)+",30)"});
+    na.appendChild(el("path",{d:"M0,-10 L6,8 L0,4 L-6,8 Z", fill:"var(--ink-soft)"}));
+    var ntxt = el("text",{x:0,y:20,"text-anchor":"middle","font-size":9,"font-weight":700,fill:"var(--ink-soft)"});
+    ntxt.textContent = "N";
+    na.appendChild(ntxt);
+    viewport.appendChild(na);
+
+    var list = filteredStations();
+    var listClaves = list.map(function(s){return s.clave;});
+
+    function cloudIcon(cx, cy, color){
+      var g = el("g",{class:"cloud-shape", transform:"translate("+cx+","+cy+")", fill:color});
+      g.appendChild(el("ellipse",{cx:0,cy:4,rx:11,ry:6.5}));
+      g.appendChild(el("circle",{cx:-6.5,cy:-1,r:6}));
+      g.appendChild(el("circle",{cx:1.5,cy:-4.5,r:7.2}));
+      g.appendChild(el("circle",{cx:8.5,cy:-0.5,r:5.3}));
+      return g;
+    }
+
+    stations.forEach(function(s){
+      var dim = listClaves.indexOf(s.clave) === -1;
+      var g = el("g",{class:"map-dot"+(s.clave===activeClave?" active":""), "data-clave":s.clave, opacity: dim ? 0.28 : 1});
+      var status = aqiNow[s.clave] || "mantenimiento";
+      var color = aqiMeta[status].color;
+      var cx = px(s.lon), cy = py(s.lat);
+      g.appendChild(el("circle",{class:"cloud-ring", cx:cx, cy:cy+2, r:14, fill:"none", stroke:"transparent","stroke-width":2}));
+      g.appendChild(cloudIcon(cx, cy, color));
+      var t = el("text",{class:"cloud-label", x:cx, y:cy + 22, "text-anchor":"middle"});
+      t.textContent = s.clave;
+      g.appendChild(t);
+      g.addEventListener("mouseenter", function(){
+        setActive(s.clave);
+        var fails = nomFailCount(s.clave);
+        showTip(event.clientX, event.clientY,
+          '<div style="font-weight:700; margin-bottom:4px;">'+s.estacion+' <span style="opacity:.7">('+s.clave+')</span></div>'+
+          '<div class="row"><span>Calidad del aire — hoy</span><b>'+aqiMeta[status].label+'</b></div>'+
+          '<div class="row"><span>Municipio</span><b>'+s.municipio+'</b></div>'+
+          '<div class="row"><span>Operando desde</span><b>'+s.anio+'</b></div>'+
+          '<div class="row"><span>Parámetros sin cumplir NOM (2026)</span><b>'+fails+'</b></div>');
+      });
+      g.addEventListener("mousemove", function(){ showTip(event.clientX, event.clientY, tip.innerHTML); });
+      g.addEventListener("mouseleave", function(){ hideTip(); });
+      g.addEventListener("click", function(){ setActive(activeClave===s.clave?null:s.clave); });
+      viewport.appendChild(g);
+    });
+
+    svg.appendChild(viewport);
+  }
+
+  document.getElementById("zoomIn").addEventListener("click", function(){
+    mapScale = Math.min(mapScale * 1.3, 3);
+    renderMap();
+  });
+  document.getElementById("zoomOut").addEventListener("click", function(){
+    mapScale = Math.max(mapScale / 1.3, 0.6);
+    renderMap();
+  });
+  document.getElementById("zoomReset").addEventListener("click", function(){
+    mapScale = 1;
+    renderMap();
+  });
+
+  var legendGrid = document.getElementById("mapLegendGrid");
+  Object.keys(aqiMeta).forEach(function(k){
+    var span = document.createElement("span");
+    span.className = "sw";
+    span.innerHTML = '<i style="background:'+aqiMeta[k].color+'"></i>'+aqiMeta[k].label;
+    legendGrid.appendChild(span);
+  });
+
+  // ---------------------------------------------------------------
+  // NOM HEATMAP
+  // ---------------------------------------------------------------
+  function renderHeat(){
+    var thead = document.querySelector("#heatTable thead tr");
+    Array.from(thead.querySelectorAll("th.station-col")).forEach(function(n){n.remove();});
+    stations.forEach(function(s){
+      var th = document.createElement("th");
+      th.className = "station-col";
+      th.textContent = s.clave;
+      th.title = s.estacion;
+      thead.appendChild(th);
+    });
+
+    var tbody = document.getElementById("heatTbody");
+    tbody.innerHTML = "";
+    var statusLabel = {cumple:"Cumple", no_cumple:"No cumple", DI:"DI", FO:"FO", sin_equipo:"¤"};
+    nomRows.forEach(function(r){
+      var tr = document.createElement("tr");
+      var paramTd = document.createElement("td");
+      paramTd.className = "param-cell";
+      paramTd.innerHTML = '<div class="param-name">'+r.param+' · '+r.periodo+'</div><div class="param-limit">'+r.limite+' '+r.unidad+'</div>';
+      tr.appendChild(paramTd);
+      claves.forEach(function(c){
+        var v = r.vals[c];
+        var td = document.createElement("td");
+        td.className = "heat-cell status-"+v[0];
+        td.textContent = statusLabel[v[0]];
+        td.addEventListener("mouseenter", function(){
+          var st = stations.find(function(s){return s.clave===c;});
+          var valTxt = v[1]!==null ? (v[1]+" "+r.unidad) : "—";
+          showTip(event.clientX, event.clientY,
+            '<div style="font-weight:700; margin-bottom:4px;">'+st.estacion+' ('+c+')</div>'+
+            '<div class="row"><span>'+r.param+' · '+r.periodo+'</span></div>'+
+            '<div class="row"><span>Límite</span><b>'+r.limite+' '+r.unidad+'</b></div>'+
+            '<div class="row"><span>Valor 2026</span><b>'+valTxt+'</b></div>'+
+            '<div class="row"><span>Estatus</span><b>'+statusLabel[v[0]]+'</b></div>');
+        });
+        td.addEventListener("mousemove", function(){ showTip(event.clientX, event.clientY, tip.innerHTML); });
+        td.addEventListener("mouseleave", hideTip);
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // DAYS BY CATEGORY CHART
+  // ---------------------------------------------------------------
+  var daysPollutant = "pm10";
+  document.querySelectorAll("#daysTabs button").forEach(function(b){
+    b.addEventListener("click", function(){
+      document.querySelectorAll("#daysTabs button").forEach(function(x){x.classList.remove("active");});
+      b.classList.add("active");
+      daysPollutant = b.getAttribute("data-p");
+      renderDays();
+    });
+  });
+
+  function renderDays(){
+    var el = document.getElementById("daysChart");
+    el.innerHTML = "";
+    var d = daysData[daysPollutant];
+    d.order.forEach(function(st){
+      var v = d.values[st];
+      var rowEl = document.createElement("div");
+      rowEl.className = "row-item";
+      var label = document.createElement("div");
+      label.className = "row-label";
+      label.textContent = st;
+      var track = document.createElement("div");
+      track.className = "bar-track";
+      catOrder.forEach(function(cat){
+        var days = v[cat];
+        if(!days) return;
+        var seg = document.createElement("div");
+        seg.className = "seg";
+        seg.style.width = (days/365*100)+"%";
+        seg.style.background = "var("+catColorVar[cat]+")";
+        seg.addEventListener("mouseenter", function(){
+          showTip(event.clientX, event.clientY,
+            '<div style="font-weight:700; margin-bottom:4px;">'+st+'</div>'+
+            '<div class="row"><span>'+catLabel[cat]+'</span><b>'+days+' días</b></div>'+
+            '<div class="row"><span>% del año</span><b>'+Math.round(days/365*100)+'%</b></div>');
+        });
+        seg.addEventListener("mousemove", function(){ showTip(event.clientX, event.clientY, tip.innerHTML); });
+        seg.addEventListener("mouseleave", hideTip);
+        track.appendChild(seg);
+      });
+      rowEl.appendChild(label);
+      rowEl.appendChild(track);
+      el.appendChild(rowEl);
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // MONTHLY TREND CHART
+  // ---------------------------------------------------------------
+  var trendPollutant = "pm10";
+  var trendLabels = {pm10:"PM₁₀", pm25:"PM₂.₅", o3:"O₃", co:"CO"};
+  document.querySelectorAll("#trendTabs button").forEach(function(b){
+    b.addEventListener("click", function(){
+      document.querySelectorAll("#trendTabs button").forEach(function(x){x.classList.remove("active");});
+      b.classList.add("active");
+      trendPollutant = b.getAttribute("data-p");
+      renderTrend();
+    });
+  });
+
+  function renderTrend(){
+    var svg = document.getElementById("trendSvg");
+    svg.innerHTML = "";
+    var d = trendData[trendPollutant];
+    document.getElementById("trendLimitLabel").textContent = d.limitLabel;
+
+    var W=900,H=340, padL=54, padR=24, padT=20, padB=36;
+    var plotW = W-padL-padR, plotH = H-padT-padB;
+    var allVals = d.max.concat(d.min).concat([d.limit]);
+    var vMax = Math.max.apply(null, allVals) * 1.08;
+    var vMin = 0;
+
+    function x(i){ return padL + i/(months.length-1) * plotW; }
+    function y(v){ return padT + (1 - (v-vMin)/(vMax-vMin)) * plotH; }
+
+    var ns = "http://www.w3.org/2000/svg";
+    function el(tag, attrs){
+      var e = document.createElementNS(ns, tag);
+      for(var k in attrs) e.setAttribute(k, attrs[k]);
+      return e;
+    }
+
+    // gridlines + y ticks
+    var ticks = 5;
+    for(var t=0;t<=ticks;t++){
+      var v = vMin + (vMax-vMin)*t/ticks;
+      var yy = y(v);
+      svg.appendChild(el("line",{x1:padL,x2:W-padR,y1:yy,y2:yy,stroke:"var(--grid)","stroke-width":1}));
+      var lab = el("text",{x:padL-8,y:yy+4,"text-anchor":"end","font-size":10,fill:"var(--muted)"});
+      lab.textContent = (d.unit==="ppm" ? v.toFixed(3) : Math.round(v));
+      svg.appendChild(lab);
+    }
+    months.forEach(function(m,i){
+      var lab = el("text",{x:x(i),y:H-padB+18,"text-anchor":"middle","font-size":10.5,fill:"var(--muted)","font-weight":600});
+      lab.textContent = m;
+      svg.appendChild(lab);
+    });
+
+    // exceedance zone (above limit) shaded
+    if(d.limit <= vMax){
+      svg.appendChild(el("rect",{x:padL,y:padT,width:plotW,height:y(d.limit)-padT,fill:"var(--critical)",opacity:0.06}));
+    }
+
+    // min-max band
+    var bandTop = months.map(function(m,i){ return x(i)+","+y(d.max[i]); }).join(" L ");
+    var bandBot = months.map(function(m,i){ return x(months.length-1-i)+","+y(d.min[months.length-1-i]); }).join(" L ");
+    svg.appendChild(el("path",{d:"M "+bandTop+" L "+bandBot+" Z", fill:"var(--accent)", opacity:0.12}));
+
+    // limit dashed line
+    var ly = y(d.limit);
+    svg.appendChild(el("line",{x1:padL,x2:W-padR,y1:ly,y2:ly,stroke:"var(--ink-soft)","stroke-width":1.6,"stroke-dasharray":"5,5"}));
+
+    // avg line
+    var avgPath = d.avg.map(function(v,i){ return (i===0?"M":"L")+x(i)+","+y(v); }).join(" ");
+    var linePath = el("path",{d:avgPath, fill:"none", stroke:"var(--accent)","stroke-width":2.5,"stroke-linecap":"round","stroke-linejoin":"round"});
+    svg.appendChild(linePath);
+
+    // max markers
+    d.max.forEach(function(v,i){
+      var over = v > d.limit;
+      var c = el("circle",{cx:x(i),cy:y(v),r:4,fill: over ? "var(--critical)" : "var(--ink-soft)", stroke:"var(--surface)","stroke-width":1.5});
+      svg.appendChild(c);
+    });
+    // avg markers + hover targets
+    d.avg.forEach(function(v,i){
+      var c = el("circle",{cx:x(i),cy:y(v),r:9,fill:"transparent",style:"cursor:pointer"});
+      c.addEventListener("mouseenter", function(){
+        svg.querySelectorAll(".hoverline").forEach(function(n){n.remove();});
+        var vline = el("line",{class:"hoverline",x1:x(i),x2:x(i),y1:padT,y2:H-padB,stroke:"var(--ink-soft)","stroke-width":1,"stroke-dasharray":"3,3"});
+        svg.insertBefore(vline, linePath);
+        var maxOver = d.max[i] > d.limit;
+        showTip(event.clientX, event.clientY,
+          '<div style="font-weight:700; margin-bottom:4px;">'+trendLabels[trendPollutant]+' — '+months[i]+'</div>'+
+          '<div class="row"><span>Promedio ZMG</span><b>'+d.avg[i]+' '+d.unit+'</b></div>'+
+          '<div class="row"><span>Rango</span><b>'+d.min[i]+' – '+d.max[i]+' '+d.unit+'</b></div>'+
+          '<div class="row"><span>Máximo en</span><b>'+d.maxSt[i]+'</b></div>'+
+          '<div class="row"><span>vs. límite NOM</span><b style="color:'+(maxOver?'#ff8b8b':'#8be0d4')+'">'+(maxOver?'excede':'dentro')+'</b></div>');
+      });
+      c.addEventListener("mousemove", function(){ showTip(event.clientX, event.clientY, tip.innerHTML); });
+      c.addEventListener("mouseleave", function(){ hideTip(); svg.querySelectorAll(".hoverline").forEach(function(n){n.remove();}); });
+      svg.appendChild(c);
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // INIT
+  // ---------------------------------------------------------------
+  renderStations();
+  renderMap();
+  renderHeat();
+  renderDays();
+  renderTrend();
+  window.addEventListener("resize", function(){ renderMap(); renderTrend(); });
+})();
+</script>
