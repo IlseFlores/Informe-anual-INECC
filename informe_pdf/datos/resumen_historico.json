@@ -1,0 +1,1020 @@
+{
+  "2024": {
+    "dias_buena_aceptable": 80,
+    "horas_categoria_calidad": {
+      "AGU": {
+        "Buena": 68.49,
+        "Aceptable": 18.06,
+        "Mala": 12.34,
+        "Muy mala": 0.08,
+        "D.I.": 1.04
+      },
+      "ATM": {
+        "Buena": 27.55,
+        "Aceptable": 5.56,
+        "Mala": 3.19,
+        "Muy mala": 0.01,
+        "D.I.": 63.7
+      },
+      "CEN": {
+        "Buena": 68.52,
+        "Aceptable": 18.27,
+        "Mala": 12.24,
+        "Muy mala": 0.31,
+        "Extremadamente mala": 0.11,
+        "D.I.": 0.55
+      },
+      "COU": {
+        "Buena": 20.88,
+        "Aceptable": 5.26,
+        "Mala": 6.08,
+        "Muy mala": 0.1,
+        "D.I.": 67.68
+      },
+      "LDO": {
+        "Buena": 45.33,
+        "Aceptable": 26.14,
+        "Mala": 22.71,
+        "Muy mala": 0.13,
+        "Extremadamente mala": 0.01,
+        "D.I.": 5.68
+      },
+      "MIR": {
+        "Buena": 54.06,
+        "Aceptable": 16.75,
+        "Mala": 23.37,
+        "Muy mala": 2.23,
+        "Extremadamente mala": 0.24,
+        "D.I.": 3.35
+      },
+      "OBL": {
+        "Buena": 36.36,
+        "Aceptable": 4.38,
+        "Mala": 6.07,
+        "Muy mala": 0.07,
+        "Extremadamente mala": 0.03,
+        "D.I.": 53.09
+      },
+      "PIN": {
+        "Buena": 39.69,
+        "Aceptable": 11.96,
+        "Mala": 39.66,
+        "Muy mala": 6.32,
+        "Extremadamente mala": 1.84,
+        "D.I.": 0.52
+      },
+      "SAN": {
+        "Buena": 17.24,
+        "Aceptable": 3.86,
+        "Mala": 6.85,
+        "Muy mala": 0.08,
+        "D.I.": 71.97
+      },
+      "SFE": {
+        "Buena": 25.69,
+        "Aceptable": 3.87,
+        "Mala": 14.77,
+        "Muy mala": 3.7,
+        "Extremadamente mala": 1.24,
+        "D.I.": 50.73
+      },
+      "SMT": {
+        "Buena": 25.72,
+        "Aceptable": 3.57,
+        "Mala": 1.34,
+        "D.I.": 69.36
+      },
+      "TLA": {
+        "Buena": 56.34,
+        "Aceptable": 21.43,
+        "Mala": 18.43,
+        "Muy mala": 0.19,
+        "D.I.": 3.61
+      },
+      "VAL": {
+        "Buena": 51.5,
+        "Aceptable": 25.67,
+        "Mala": 15.48,
+        "Muy mala": 0.08,
+        "D.I.": 7.26
+      }
+    },
+    "cumplimiento_nom": [
+      {
+        "id": "PM10_24H",
+        "contaminante": "PM10",
+        "simbolo": "PM₁₀",
+        "periodo": "24 horas",
+        "limite_txt": "Percentil 99 ≤ 60",
+        "unidad": "µg/m³",
+        "estaciones": {
+          "AGU": {
+            "status": "no_cumple",
+            "valor": 81.94,
+            "dias_validos": 352
+          },
+          "ATM": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 119
+          },
+          "CEN": {
+            "status": "no_cumple",
+            "valor": 103.93,
+            "dias_validos": 324
+          },
+          "COU": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 92
+          },
+          "LDO": {
+            "status": "no_cumple",
+            "valor": 92.0,
+            "dias_validos": 339
+          },
+          "MIR": {
+            "status": "no_cumple",
+            "valor": 156.55,
+            "dias_validos": 330
+          },
+          "OBL": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 166
+          },
+          "PIN": {
+            "status": "no_cumple",
+            "valor": 232.4,
+            "dias_validos": 353
+          },
+          "SAN": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 100
+          },
+          "SFE": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 174
+          },
+          "SMT": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 106
+          },
+          "TLA": {
+            "status": "no_cumple",
+            "valor": 86.32,
+            "dias_validos": 329
+          },
+          "VAL": {
+            "status": "no_cumple",
+            "valor": 69.66,
+            "dias_validos": 335
+          }
+        }
+      },
+      {
+        "id": "PM10_ANUAL",
+        "contaminante": "PM10",
+        "simbolo": "PM₁₀",
+        "periodo": "Anual",
+        "limite_txt": "Promedio ≤ 28",
+        "unidad": "µg/m³",
+        "estaciones": {
+          "AGU": {
+            "status": "no_cumple",
+            "valor": 39.0625,
+            "dias_validos": 352
+          },
+          "ATM": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 119
+          },
+          "CEN": {
+            "status": "no_cumple",
+            "valor": 40.1204,
+            "dias_validos": 324
+          },
+          "COU": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 92
+          },
+          "LDO": {
+            "status": "no_cumple",
+            "valor": 43.8348,
+            "dias_validos": 339
+          },
+          "MIR": {
+            "status": "no_cumple",
+            "valor": 59.4697,
+            "dias_validos": 330
+          },
+          "OBL": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 166
+          },
+          "PIN": {
+            "status": "no_cumple",
+            "valor": 78.3683,
+            "dias_validos": 353
+          },
+          "SAN": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 100
+          },
+          "SFE": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 174
+          },
+          "SMT": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 106
+          },
+          "TLA": {
+            "status": "no_cumple",
+            "valor": 39.2948,
+            "dias_validos": 329
+          },
+          "VAL": {
+            "status": "no_cumple",
+            "valor": 33.5075,
+            "dias_validos": 335
+          }
+        }
+      },
+      {
+        "id": "PM25_24H",
+        "contaminante": "PM2.5",
+        "simbolo": "PM₂.₅",
+        "periodo": "24 horas",
+        "limite_txt": "Percentil 99 ≤ 33",
+        "unidad": "µg/m³",
+        "estaciones": {
+          "AGU": {
+            "status": "no_cumple",
+            "valor": 33.5,
+            "dias_validos": 326
+          },
+          "ATM": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 100
+          },
+          "CEN": {
+            "status": "no_cumple",
+            "valor": 53.25,
+            "dias_validos": 316
+          },
+          "COU": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 89
+          },
+          "LDO": {
+            "status": "no_cumple",
+            "valor": 59.21,
+            "dias_validos": 294
+          },
+          "MIR": {
+            "status": "no_cumple",
+            "valor": 73.23,
+            "dias_validos": 278
+          },
+          "OBL": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 98
+          },
+          "PIN": {
+            "status": "no_cumple",
+            "valor": 120.95,
+            "dias_validos": 306
+          },
+          "SAN": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 98
+          },
+          "SFE": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 173
+          },
+          "SMT": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 98
+          },
+          "TLA": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 138
+          },
+          "VAL": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 209
+          }
+        }
+      },
+      {
+        "id": "PM25_ANUAL",
+        "contaminante": "PM2.5",
+        "simbolo": "PM₂.₅",
+        "periodo": "Anual",
+        "limite_txt": "Promedio ≤ 10",
+        "unidad": "µg/m³",
+        "estaciones": {
+          "AGU": {
+            "status": "no_cumple",
+            "valor": 15.1933,
+            "dias_validos": 326
+          },
+          "ATM": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 100
+          },
+          "CEN": {
+            "status": "no_cumple",
+            "valor": 17.2468,
+            "dias_validos": 316
+          },
+          "COU": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 89
+          },
+          "LDO": {
+            "status": "no_cumple",
+            "valor": 26.9456,
+            "dias_validos": 294
+          },
+          "MIR": {
+            "status": "no_cumple",
+            "valor": 24.4424,
+            "dias_validos": 278
+          },
+          "OBL": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 98
+          },
+          "PIN": {
+            "status": "no_cumple",
+            "valor": 41.049,
+            "dias_validos": 306
+          },
+          "SAN": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 98
+          },
+          "SFE": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 173
+          },
+          "SMT": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 98
+          },
+          "TLA": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 138
+          },
+          "VAL": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 209
+          }
+        }
+      },
+      {
+        "id": "O3_1H",
+        "contaminante": "O3",
+        "simbolo": "O₃",
+        "periodo": "1 hora",
+        "limite_txt": "Máximo ≤ 0.090",
+        "unidad": "ppm",
+        "estaciones": {
+          "AGU": {
+            "status": "no_cumple",
+            "valor": 0.157,
+            "dias_validos": 350
+          },
+          "ATM": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 117
+          },
+          "CEN": {
+            "status": "no_cumple",
+            "valor": 0.156,
+            "dias_validos": 338
+          },
+          "COU": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 110
+          },
+          "LDO": {
+            "status": "no_cumple",
+            "valor": 0.125,
+            "dias_validos": 335
+          },
+          "MIR": {
+            "status": "no_cumple",
+            "valor": 0.153,
+            "dias_validos": 330
+          },
+          "OBL": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 161
+          },
+          "PIN": {
+            "status": "no_cumple",
+            "valor": 0.113,
+            "dias_validos": 346
+          },
+          "SAN": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 97
+          },
+          "SFE": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 107
+          },
+          "SMT": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 108
+          },
+          "TLA": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 263
+          },
+          "VAL": {
+            "status": "no_cumple",
+            "valor": 0.169,
+            "dias_validos": 332
+          }
+        }
+      },
+      {
+        "id": "O3_8H",
+        "contaminante": "O3",
+        "simbolo": "O₃",
+        "periodo": "8 horas",
+        "limite_txt": "Máximo de 8h ≤ 0.060",
+        "unidad": "ppm",
+        "estaciones": {
+          "AGU": {
+            "status": "no_cumple",
+            "valor": 0.117,
+            "dias_validos": 360
+          },
+          "ATM": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 128
+          },
+          "CEN": {
+            "status": "no_cumple",
+            "valor": 0.109,
+            "dias_validos": 366
+          },
+          "COU": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 117
+          },
+          "LDO": {
+            "status": "no_cumple",
+            "valor": 0.093,
+            "dias_validos": 342
+          },
+          "MIR": {
+            "status": "no_cumple",
+            "valor": 0.11,
+            "dias_validos": 352
+          },
+          "OBL": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 163
+          },
+          "PIN": {
+            "status": "no_cumple",
+            "valor": 0.086,
+            "dias_validos": 365
+          },
+          "SAN": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 100
+          },
+          "SFE": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 131
+          },
+          "SMT": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 115
+          },
+          "TLA": {
+            "status": "no_cumple",
+            "valor": 0.113,
+            "dias_validos": 282
+          },
+          "VAL": {
+            "status": "no_cumple",
+            "valor": 0.12,
+            "dias_validos": 343
+          }
+        }
+      },
+      {
+        "id": "CO_1H",
+        "contaminante": "CO",
+        "simbolo": "CO",
+        "periodo": "1 hora",
+        "limite_txt": "Máximo ≤ 26",
+        "unidad": "ppm",
+        "estaciones": {
+          "AGU": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 59
+          },
+          "ATM": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 126
+          },
+          "CEN": {
+            "status": "cumple",
+            "valor": 7.66,
+            "dias_validos": 347
+          },
+          "COU": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 22
+          },
+          "LDO": {
+            "status": "cumple",
+            "valor": 6.57,
+            "dias_validos": 342
+          },
+          "MIR": {
+            "status": "cumple",
+            "valor": 5.43,
+            "dias_validos": 340
+          },
+          "OBL": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 112
+          },
+          "PIN": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 120
+          },
+          "SAN": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 101
+          },
+          "SFE": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 102
+          },
+          "SMT": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 110
+          },
+          "TLA": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 69
+          },
+          "VAL": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 88
+          }
+        }
+      },
+      {
+        "id": "CO_8H",
+        "contaminante": "CO",
+        "simbolo": "CO",
+        "periodo": "8 horas",
+        "limite_txt": "Máximo de 8h ≤ 9",
+        "unidad": "ppm",
+        "estaciones": {
+          "AGU": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 62
+          },
+          "ATM": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 132
+          },
+          "CEN": {
+            "status": "cumple",
+            "valor": 6.44,
+            "dias_validos": 357
+          },
+          "COU": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 26
+          },
+          "LDO": {
+            "status": "cumple",
+            "valor": 3.44,
+            "dias_validos": 345
+          },
+          "MIR": {
+            "status": "cumple",
+            "valor": 4.04,
+            "dias_validos": 347
+          },
+          "OBL": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 114
+          },
+          "PIN": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 138
+          },
+          "SAN": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 104
+          },
+          "SFE": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 105
+          },
+          "SMT": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 115
+          },
+          "TLA": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 73
+          },
+          "VAL": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 92
+          }
+        }
+      },
+      {
+        "id": "NO2_1H",
+        "contaminante": "NO2",
+        "simbolo": "NO₂",
+        "periodo": "1 hora",
+        "limite_txt": "Máximo ≤ 0.106",
+        "unidad": "ppm",
+        "estaciones": {
+          "AGU": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 111
+          },
+          "ATM": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 117
+          },
+          "CEN": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 114
+          },
+          "COU": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "LDO": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 115
+          },
+          "MIR": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 132
+          },
+          "OBL": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 103
+          },
+          "PIN": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 100
+          },
+          "SAN": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 101
+          },
+          "SFE": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 115
+          },
+          "SMT": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 100
+          },
+          "TLA": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 109
+          },
+          "VAL": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 115
+          }
+        }
+      },
+      {
+        "id": "NO2_ANUAL",
+        "contaminante": "NO2",
+        "simbolo": "NO₂",
+        "periodo": "Anual",
+        "limite_txt": "Promedio ≤ 0.021",
+        "unidad": "ppm",
+        "estaciones": {
+          "AGU": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 111
+          },
+          "ATM": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 117
+          },
+          "CEN": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 114
+          },
+          "COU": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "LDO": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 115
+          },
+          "MIR": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 132
+          },
+          "OBL": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 103
+          },
+          "PIN": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 100
+          },
+          "SAN": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 101
+          },
+          "SFE": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 115
+          },
+          "SMT": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 100
+          },
+          "TLA": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 109
+          },
+          "VAL": {
+            "status": "DI",
+            "valor": null,
+            "dias_validos": 115
+          }
+        }
+      },
+      {
+        "id": "SO2_1H",
+        "contaminante": "SO2",
+        "simbolo": "SO₂",
+        "periodo": "1 hora",
+        "limite_txt": "Percentil 99 ≤ 0.075",
+        "unidad": "ppm",
+        "estaciones": {
+          "AGU": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "ATM": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "CEN": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "COU": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "LDO": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "MIR": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "OBL": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "PIN": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "SAN": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "SFE": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "SMT": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "TLA": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "VAL": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          }
+        }
+      },
+      {
+        "id": "SO2_24H",
+        "contaminante": "SO2",
+        "simbolo": "SO₂",
+        "periodo": "24 horas",
+        "limite_txt": "Máximo ≤ 0.040",
+        "unidad": "ppm",
+        "estaciones": {
+          "AGU": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "ATM": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "CEN": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "COU": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "LDO": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "MIR": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "OBL": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "PIN": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "SAN": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "SFE": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "SMT": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "TLA": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          },
+          "VAL": {
+            "status": "sin_datos",
+            "valor": null,
+            "dias_validos": 0
+          }
+        }
+      }
+    ]
+  },
+  "2023": {
+    "dias_buena_aceptable": 56
+  },
+  "2021": {
+    "dias_buena_aceptable": 120
+  },
+  "2020": {
+    "dias_buena_aceptable": 101
+  },
+  "2019": {
+    "dias_buena_aceptable": 46
+  },
+  "2022": {
+    "dias_buena_aceptable": 88
+  }
+}

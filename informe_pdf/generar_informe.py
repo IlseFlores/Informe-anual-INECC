@@ -1,25 +1,40 @@
 """
 Generador del Informe Anual de Calidad del Aire - Jalisco.
 
-Uso:
+Uso (un solo comando, con el año que se quiera):
     python generar_informe.py --anio 2024
+
+La primera vez que se pide un año, este script descarga automáticamente la
+base de datos horaria de ese año (BD_{anio} en Google Sheets) y calcula sus
+cifras usando calculo_datos.py -- un port fiel de las funciones de cálculo
+del notebook de diagnóstico (IAS, NOM-172, NowCast, etc.). El resultado se
+guarda en datos/resumen_historico.json, así que las siguientes corridas para
+ese mismo año son instantáneas (no vuelve a descargar/calcular a menos que
+se use --recalcular).
+
+    python generar_informe.py --anio 2024 --recalcular      # fuerza recálculo
+    python generar_informe.py --anio 2024 --sin-datos-nuevos  # solo con lo ya guardado
     python generar_informe.py --anio 2024 --salida "Informe 2024.pdf"
 
 Este script arma el PDF sección por sección. Por ahora incluye:
     1. Introducción
     2. Sistema de Monitoreo Atmosférico de Jalisco (SIMAJ)
+    3. Evaluación de Normas Oficiales Mexicanas de calidad del aire
+    4. Panorama general de la calidad del aire en el AMG
 
-Las secciones siguientes (cumplimiento de NOM, Índice Aire y Salud,
-comportamiento de contaminantes, etc.) se agregan como nuevas funciones
+Las secciones siguientes se agregan como nuevas funciones
 "_seccion_xxx(anio)" que devuelven una lista de flowables, y se van
 sumando a la lista `story` en generar_informe().
 
-Los datos que cambian de un año a otro (población, imagen de la red de
-monitoreo, cifras, tablas...) se definen en DATOS_POR_ANIO más abajo, o
-se pueden mover a un archivo/base de datos aparte cuando esté lista.
+Los datos editoriales/fijos (textos, tablas normativas, imágenes) se
+definen en DATOS_POR_ANIO más abajo. Los datos calculados a partir de la
+base de datos de cada año (por ahora, los días Buena/Aceptable de la
+Figura 2) viven en datos/resumen_historico.json y sobreescriben a
+DATOS_POR_ANIO cuando están disponibles -- ver _datos_del_anio().
 """
 import argparse
 import io
+import json
 import unicodedata
 from pathlib import Path
 
@@ -36,10 +51,16 @@ from reportlab.platypus import (
     Image, KeepTogether, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
 )
 from reportlab.lib.utils import ImageReader
+from reportlab.graphics.shapes import Drawing, Circle, Line, Rect, String
 
 BASE_DIR = Path(__file__).resolve().parent
 FONTS_DIR = BASE_DIR / "assets" / "fonts"
 IMG_DIR = BASE_DIR / "assets" / "img"
+DATOS_DIR = BASE_DIR / "datos"
+RUTA_RESUMEN_HISTORICO = DATOS_DIR / "resumen_historico.json"
+
+# Cuántos años hacia atrás se muestran en la serie histórica (Figura 2, etc.)
+ANIOS_HISTORICO = 6
 
 # ---------------------------------------------------------------------------
 # Paleta e identidad visual (misma paleta usada en el dashboard)
@@ -53,6 +74,48 @@ MUTED = colors.HexColor("#6C8894")
 PAGE_SIZE = letter
 MARGIN = 2.2 * cm
 CONTENT_WIDTH = PAGE_SIZE[0] - 2 * MARGIN
+
+# Mismo orden de estaciones que EST_ORDER_BASE en calculo_datos.py / tu notebook.
+ORDEN_ESTACIONES_HORAS = ["AGU", "ATM", "CEN", "COU", "LDO", "MIR", "OBL", "PIN", "SAN", "SFE", "SMT", "TLA", "VAL"]
+
+# Colores de las categorías IAS (mismos que en categorias_ias, para Tabla 4)
+# más gris para "D.I.". Las claves deben coincidir exactamente con las que
+# calculo_datos.py escribe en horas_categoria_calidad (CAT_ORDER usa "Muy
+# mala" con minúscula, a diferencia de "Muy Mala" en categorias_ias).
+CAT_ORDEN_HORAS = ["Buena", "Aceptable", "Mala", "Muy mala", "Extremadamente mala", "D.I."]
+COLOR_CATEGORIA_IAS = {
+    "Buena": colors.HexColor("#2E9E3B"),
+    "Aceptable": colors.HexColor("#D9B32C"),
+    "Mala": colors.HexColor("#E8813A"),
+    "Muy mala": colors.HexColor("#D0453F"),
+    "Extremadamente mala": colors.HexColor("#7A3FA0"),
+    "D.I.": colors.HexColor("#B7C2C7"),
+}
+
+# Colores y mapeo de estatus para la Tabla 5 (cumplimiento de NOM). "cumple"
+# y "no_cumple" reutilizan los verdes/rojos del IAS; DI/FO/sin_equipo usan
+# grises neutros para no competir visualmente con los veredictos.
+COLOR_NOM_CUMPLE = COLOR_CATEGORIA_IAS["Buena"]
+COLOR_NOM_NO_CUMPLE = COLOR_CATEGORIA_IAS["Muy mala"]
+COLOR_NOM_DI = COLOR_CATEGORIA_IAS["D.I."]
+COLOR_NOM_FO = colors.HexColor("#E7ECEE")
+COLOR_NOM_SIN_EQUIPO = colors.HexColor("#F5F7F8")
+
+# calculo_datos.py devuelve "sin_datos" cuando una estación no tiene ningún
+# registro válido en el año; aquí se resuelve si es porque el equipo estuvo
+# fuera de operación (FO) o porque la estación no mide ese contaminante (¤),
+# usando la capacidad ya declarada en datos["estaciones"][i]["contaminantes"].
+CAPACIDAD_POR_CONTAMINANTE = {
+    "PM10": "PM10", "PM2.5": "PM25", "O3": "O3", "CO": "CO", "NO2": "NO2", "SO2": "SO2",
+}
+
+# Etiquetas cortas para el encabezado de municipio en la Tabla 5: cuando el
+# grupo cubre una sola estación (~30pt de ancho), "San Pedro Tlaquepaque"
+# no cabe ni partiéndolo por sílabas sueltas; se usa un guion manual en el
+# punto de corte para evitar que reportlab lo parta a media palabra.
+MUNICIPIO_CORTO = {
+    "San Pedro Tlaquepaque": "Tlaque-<br/>paque",
+}
 
 # ---------------------------------------------------------------------------
 # Datos que varían por año de informe
@@ -125,8 +188,43 @@ DATOS_POR_ANIO = {
             {"categoria": "Extremadamente mala", "color": "#7A3FA0", "riesgo": "Extremadamente alto",
              "reco_unica": "Permanece en interiores y evita cualquier esfuerzo físico al aire libre."},
         ],
+        # Días con IAS global "Buena" o "Aceptable" en el AMG, año del informe y los
+        # 5 años anteriores, en orden reciente -> antiguo (así se muestran en la Figura 2).
+        "serie_dias_buena_aceptable": [
+            (2024, 80), (2023, 57), (2022, 88), (2021, 120), (2020, 101), (2019, 46),
+        ],
+        # % de horas del año en cada categoría IAS GLOBAL (dominante entre
+        # los 6 contaminantes criterio), por estación (Figura 3). Calculado
+        # con calculo_datos.py sobre BD_2024; ver datos/resumen_historico.json
+        # para el valor con el que generar_informe.py arranca de verdad.
+        "horas_categoria_calidad": {
+            "AGU": {"Buena": 68.49, "Aceptable": 18.06, "Mala": 12.34, "Muy mala": 0.08, "D.I.": 1.04},
+            "ATM": {"Buena": 27.55, "Aceptable": 5.56, "Mala": 3.19, "Muy mala": 0.01, "D.I.": 63.70},
+            "CEN": {"Buena": 68.52, "Aceptable": 18.27, "Mala": 12.24, "Muy mala": 0.31, "Extremadamente mala": 0.11, "D.I.": 0.55},
+            "COU": {"Buena": 20.88, "Aceptable": 5.26, "Mala": 6.08, "Muy mala": 0.10, "D.I.": 67.68},
+            "LDO": {"Buena": 45.33, "Aceptable": 26.14, "Mala": 22.71, "Muy mala": 0.13, "Extremadamente mala": 0.01, "D.I.": 5.68},
+            "MIR": {"Buena": 54.06, "Aceptable": 16.75, "Mala": 23.37, "Muy mala": 2.23, "Extremadamente mala": 0.24, "D.I.": 3.35},
+            "OBL": {"Buena": 36.36, "Aceptable": 4.38, "Mala": 6.07, "Muy mala": 0.07, "Extremadamente mala": 0.03, "D.I.": 53.09},
+            "PIN": {"Buena": 39.69, "Aceptable": 11.96, "Mala": 39.66, "Muy mala": 6.32, "Extremadamente mala": 1.84, "D.I.": 0.52},
+            "SAN": {"Buena": 17.24, "Aceptable": 3.86, "Mala": 6.85, "Muy mala": 0.08, "D.I.": 71.97},
+            "SFE": {"Buena": 25.69, "Aceptable": 3.87, "Mala": 14.77, "Muy mala": 3.70, "Extremadamente mala": 1.24, "D.I.": 50.73},
+            "SMT": {"Buena": 25.72, "Aceptable": 3.57, "Mala": 1.34, "D.I.": 69.36},
+            "TLA": {"Buena": 56.34, "Aceptable": 21.43, "Mala": 18.43, "Muy mala": 0.19, "D.I.": 3.61},
+            "VAL": {"Buena": 51.50, "Aceptable": 25.67, "Mala": 15.48, "Muy mala": 0.08, "D.I.": 7.26},
+        },
     },
 }
+
+
+def _cargar_resumen_historico():
+    """Lee datos/resumen_historico.json (si existe). Ese archivo lo genera el
+    notebook de Colab -- una entrada por año, con las cifras calculadas a
+    partir de la base de datos de ese año (ver exportar_resumen_informe() en
+    el notebook). Si no existe, el informe usa los valores de ejemplo fijados
+    en DATOS_POR_ANIO más abajo."""
+    if not RUTA_RESUMEN_HISTORICO.exists():
+        return {}
+    return json.loads(RUTA_RESUMEN_HISTORICO.read_text(encoding="utf-8"))
 
 
 def _datos_del_anio(anio):
@@ -136,7 +234,35 @@ def _datos_del_anio(anio):
             f"No hay datos configurados para el año {anio}. "
             f"Años disponibles: {anios_disp}."
         )
-    return DATOS_POR_ANIO[anio]
+    datos = dict(DATOS_POR_ANIO[anio])
+
+    historico = _cargar_resumen_historico()
+    if str(anio) not in historico:
+        return datos
+
+    # El histórico manda: cualquier cifra que el notebook haya calculado para
+    # este año reemplaza al valor de ejemplo. Metadatos editoriales (textos,
+    # imágenes, tablas normativas fijas) no viven en el histórico y se quedan
+    # como están en DATOS_POR_ANIO.
+    entrada_anio = historico[str(anio)]
+
+    if "dias_buena_aceptable" in entrada_anio:
+        serie = []
+        for i in range(ANIOS_HISTORICO):
+            anio_i = anio - i
+            valor = historico.get(str(anio_i), {}).get("dias_buena_aceptable")
+            if valor is not None:
+                serie.append((anio_i, valor))
+        if serie:
+            datos["serie_dias_buena_aceptable"] = serie
+
+    # Cualquier otra cifra del histórico que ya tenga el mismo nombre que un
+    # campo de DATOS_POR_ANIO simplemente lo sobreescribe (p. ej. población).
+    for clave, valor in entrada_anio.items():
+        if clave != "dias_buena_aceptable":
+            datos[clave] = valor
+
+    return datos
 
 
 # ---------------------------------------------------------------------------
@@ -225,6 +351,22 @@ def _estilos():
         ),
         "tabla_subheader": ParagraphStyle(
             "tabla_subheader", fontName="Montserrat-Bold", fontSize=8.3, leading=11,
+            textColor=colors.white, alignment=TA_CENTER,
+        ),
+        "nom_etiqueta": ParagraphStyle(
+            "nom_etiqueta", fontName="Montserrat-Bold", fontSize=7.6, leading=9.8,
+            textColor=NAVY,
+        ),
+        "nom_celda_clara": ParagraphStyle(
+            "nom_celda_clara", fontName="Montserrat-Bold", fontSize=7.6, leading=9.5,
+            textColor=colors.white, alignment=TA_CENTER,
+        ),
+        "nom_celda_oscura": ParagraphStyle(
+            "nom_celda_oscura", fontName="Montserrat-SemiBold", fontSize=7.3, leading=9.5,
+            textColor=MUTED, alignment=TA_CENTER,
+        ),
+        "tabla_subheader_chico": ParagraphStyle(
+            "tabla_subheader_chico", fontName="Montserrat-Bold", fontSize=6.8, leading=8.4,
             textColor=colors.white, alignment=TA_CENTER,
         ),
     }
@@ -482,6 +624,416 @@ def _seccion_evaluacion_nom(estilos, datos):
     story.append(KeepTogether(_tabla_ias(estilos, datos["categorias_ias"])))
 
     return story
+
+
+def _seccion_panorama_general(anio, estilos, datos):
+    story = [Paragraph(f"Panorama general de la calidad del aire en el AMG durante {anio}", estilos["h2"])]
+
+    story.append(Paragraph(
+        "Para presentar un panorama general de la calidad del aire en el AMG, se contabilizan los días "
+        "en los que todos los contaminantes criterio se mantuvieron dentro de las categorías Buena o "
+        "Aceptable del Índice Aire y Salud.",
+        estilos["cuerpo"],
+    ))
+
+    serie = datos["serie_dias_buena_aceptable"]
+    story.append(Paragraph(_texto_panorama_general(anio, serie), estilos["cuerpo"]))
+
+    story.append(KeepTogether([
+        Paragraph(
+            "Figura 2. Días con calidad del aire Buena o Aceptable en el AMG.",
+            estilos["tabla_caption"],
+        ),
+        _grafica_dias_buena_aceptable(serie),
+    ]))
+
+    return story
+
+
+def _texto_panorama_general(anio, serie):
+    """Arma el párrafo de resultados a partir de la serie histórica, sin
+    valores fijos por año: el texto se recalcula con los datos que traiga
+    'serie' para el año del informe y los años que lo acompañan."""
+    valores_por_anio = dict(serie)
+    anio_anterior = anio - 1
+    valor_actual = valores_por_anio.get(anio)
+    valor_anterior = valores_por_anio.get(anio_anterior)
+
+    anio_max, valor_max = max(serie, key=lambda t: t[1])
+    anio_min, valor_min = min(serie, key=lambda t: t[1])
+    anio_ini, anio_fin = min(a for a, _ in serie), max(a for a, _ in serie)
+
+    frase_comparacion = ""
+    if valor_actual is not None and valor_anterior:
+        diferencia = valor_actual - valor_anterior
+        variacion = "más" if diferencia >= 0 else "menos"
+        porcentaje = round(abs(diferencia) / valor_anterior * 100)
+        frase_comparacion = (
+            f", lo que representa {abs(diferencia)} días {variacion} que en {anio_anterior}, "
+            f"equivalentes a un{'a disminución' if diferencia < 0 else ' incremento'} aproximado de {porcentaje} %"
+        )
+
+    return (
+        f"Durante {anio} se registraron {valor_actual} días con calidad del aire Buena o Aceptable en "
+        f"el AMG{frase_comparacion}. La Figura 2 muestra la evolución anual de este indicador entre "
+        f"{anio_ini} y {anio_fin}. En este periodo, el mayor número de días con calidad del aire Buena "
+        f"o Aceptable se registró en {anio_max}, con {valor_max} días, mientras que {anio_min} presentó "
+        f"el valor más bajo, con {valor_min} días."
+    )
+
+
+def _grafica_dias_buena_aceptable(serie):
+    """Dibuja la Figura 2: círculos y línea con los días Buena/Aceptable por
+    año, en el mismo orden (reciente -> antiguo) en que se lista 'serie'."""
+    ancho = CONTENT_WIDTH
+    alto = 6.4 * cm
+    pad_izq, pad_der, pad_arriba, pad_abajo = 30, 16, 18, 30
+    plot_w = ancho - pad_izq - pad_der
+    plot_h = alto - pad_arriba - pad_abajo
+
+    valores = [v for _, v in serie]
+    y_max = (max(valores) // 20 + 2) * 20
+    n = len(serie)
+    inset_puntos = 20  # deja espacio para que el primer/último círculo no tape las etiquetas del eje Y
+
+    def x_de(i):
+        ancho_util = plot_w - 2 * inset_puntos
+        return pad_izq + inset_puntos + (ancho_util * i / (n - 1) if n > 1 else ancho_util / 2)
+
+    def y_de(v):
+        return pad_abajo + plot_h * (v / y_max)
+
+    d = Drawing(ancho, alto)
+
+    ticks = int(y_max // 20) + 1
+    for t in range(ticks):
+        valor_tick = t * 20
+        y = y_de(valor_tick)
+        d.add(Line(pad_izq, y, ancho - pad_der, y, strokeColor=colors.HexColor("#E1E7EA"), strokeWidth=0.6))
+        d.add(String(pad_izq - 8, y - 3, str(valor_tick), fontName="Montserrat", fontSize=8,
+                     fillColor=MUTED, textAnchor="end"))
+
+    puntos = [(x_de(i), y_de(v)) for i, (_, v) in enumerate(serie)]
+    for (x1, y1), (x2, y2) in zip(puntos, puntos[1:]):
+        d.add(Line(x1, y1, x2, y2, strokeColor=AQUA, strokeWidth=2))
+
+    for (anio_i, valor), (x, y) in zip(serie, puntos):
+        d.add(Circle(x, y, 13, fillColor=colors.HexColor("#CDEFEA"), strokeColor=AQUA, strokeWidth=1.2))
+        d.add(String(x, y - 3.5, str(valor), fontName="Montserrat-Bold", fontSize=9.5,
+                     fillColor=NAVY, textAnchor="middle"))
+        d.add(String(x, pad_abajo - 16, str(anio_i), fontName="Montserrat-SemiBold", fontSize=9,
+                     fillColor=TEXT, textAnchor="middle"))
+
+    return d
+
+
+def _seccion_horas_categoria(anio, estilos, datos):
+    story = [Paragraph("Horas del año según categoría de calidad del aire", estilos["h2"])]
+
+    story.append(Paragraph(
+        "Clasificación horaria por estación, según el Índice Aire y Salud dominante entre los seis "
+        "contaminantes criterio (el contaminante que en cada hora presenta la categoría más "
+        "desfavorable). Cada barra representa el porcentaje de horas del año que la estación "
+        "registró en cada categoría; en gris se señalan las horas sin dato suficiente (D.I.), ya "
+        "sea por falla de algún equipo o, en el caso de las estaciones incorporadas en 2024, por no "
+        "contar todavía con un ciclo anual completo de operación. Más adelante el informe desglosa "
+        "el comportamiento de cada contaminante por separado.",
+        estilos["cuerpo"],
+    ))
+
+    horas = datos.get("horas_categoria_calidad", {})
+    if not horas:
+        story.append(Paragraph("[Faltan los datos de horas por categoría]", estilos["caption"]))
+        return story
+
+    story.append(Paragraph(_texto_horas_categoria(anio, horas), estilos["cuerpo"]))
+
+    story.append(KeepTogether([
+        Paragraph(
+            "Figura 3. Horas del año según categoría de calidad del aire, por estación.",
+            estilos["tabla_caption"],
+        ),
+        _grafica_horas_categoria(horas),
+    ]))
+    story.append(Spacer(1, 10))
+    story.append(_leyenda_categorias_ias())
+
+    return story
+
+
+UMBRAL_DI_SUFICIENTE = 50  # % máximo de horas D.I. para considerar una estación comparable en este resumen
+
+
+def _texto_horas_categoria(anio, datos_estacion, orden_estaciones=ORDEN_ESTACIONES_HORAS):
+    """Arma el párrafo que resume la Figura 3, calculando directamente de
+    'datos_estacion' qué estación tuvo más horas favorables (Buena o
+    Aceptable) y cuál más horas desfavorables (Mala o peor), y señalando las
+    estaciones cuyos datos son insuficientes para esa comparación. No hay
+    valores fijos: si cambian los datos del año, cambia el texto."""
+    filas = []
+    for est in orden_estaciones:
+        cats = datos_estacion.get(est, {})
+        di = cats.get("D.I.", 0)
+        favorable = cats.get("Buena", 0) + cats.get("Aceptable", 0)
+        desfavorable = cats.get("Mala", 0) + cats.get("Muy mala", 0) + cats.get("Extremadamente mala", 0)
+        filas.append((est, favorable, desfavorable, di))
+
+    frase_intro = (
+        f"La Figura 3 muestra, para cada una de las {len(orden_estaciones)} estaciones de la red, el "
+        "porcentaje de horas del año que se clasificó en cada categoría del Índice Aire y Salud, "
+        "según el contaminante con la categoría más desfavorable en cada hora."
+    )
+
+    incompletas = [f[0] for f in filas if f[3] >= UMBRAL_DI_SUFICIENTE]
+    frase_incompletas = ""
+    if incompletas:
+        if len(incompletas) == 1:
+            lista = incompletas[0]
+        else:
+            lista = ", ".join(incompletas[:-1]) + " y " + incompletas[-1]
+        verbo = "concentra" if len(incompletas) == 1 else "concentran"
+        frase_incompletas = (
+            f" Las estaciones {lista} {verbo} una proporción alta de horas sin dato suficiente (D.I.), "
+            f"varias de ellas por haberse incorporado a la red a mediados de {anio} y no contar "
+            "todavía con un ciclo anual completo de mediciones."
+        )
+
+    suficientes = [f for f in filas if f[3] < UMBRAL_DI_SUFICIENTE]
+    if not suficientes:
+        return (
+            f"{frase_intro} La mayoría de las estaciones no cuentan todavía con suficientes horas "
+            f"válidas en el año para comparar su desempeño.{frase_incompletas}"
+        )
+
+    mejor = max(suficientes, key=lambda f: f[1])
+    peor = max(suficientes, key=lambda f: f[2])
+
+    return (
+        f"{frase_intro} Entre las estaciones con datos suficientes durante {anio}, {mejor[0]} registró "
+        f"la mayor proporción de horas en categoría Buena o Aceptable ({mejor[1]:.0f} % del año), "
+        f"mientras que {peor[0]} presentó la mayor proporción de horas en categoría Mala o peor "
+        f"({peor[2]:.0f} % del año).{frase_incompletas}"
+    )
+
+
+def _grafica_horas_categoria(datos_estacion, orden_estaciones=ORDEN_ESTACIONES_HORAS):
+    """Barras horizontales 100% apiladas: para cada estación, qué porcentaje
+    de horas del año cayó en cada categoría IAS (o D.I.)."""
+    ancho = CONTENT_WIDTH
+    etiqueta_w = 34
+    fila_h = 17
+    espacio = 6
+    pad_arriba, pad_abajo = 4, 4
+    n = len(orden_estaciones)
+    alto = pad_arriba + n * fila_h + (n - 1) * espacio + pad_abajo
+    barra_w = ancho - etiqueta_w
+
+    d = Drawing(ancho, alto)
+
+    for i, est in enumerate(orden_estaciones):
+        y = alto - pad_arriba - (i + 1) * fila_h - i * espacio
+        d.add(String(etiqueta_w - 8, y + fila_h / 2 - 3, est, fontName="Montserrat-Bold",
+                     fontSize=8.4, fillColor=NAVY, textAnchor="end"))
+
+        valores = datos_estacion.get(est, {})
+        x = etiqueta_w
+        for cat in CAT_ORDEN_HORAS:
+            pct = valores.get(cat, 0)
+            if pct <= 0:
+                continue
+            ancho_seg = barra_w * pct / 100
+            d.add(Rect(x, y, ancho_seg, fila_h, fillColor=COLOR_CATEGORIA_IAS[cat],
+                      strokeColor=colors.white, strokeWidth=0.6))
+            x += ancho_seg
+
+    return d
+
+
+def _leyenda_categorias_ias():
+    fuente, tam = "Montserrat", 8.5
+    swatch = 10
+    gap_swatch_texto = 4
+    gap_items = 16
+    alto = 14
+
+    items = []
+    x = 0.0
+    for cat in CAT_ORDEN_HORAS:
+        ancho_texto = pdfmetrics.stringWidth(cat, fuente, tam)
+        items.append((cat, x, ancho_texto))
+        x += swatch + gap_swatch_texto + ancho_texto + gap_items
+    ancho_total = x - gap_items
+
+    d = Drawing(ancho_total, alto)
+    for cat, x0, ancho_texto in items:
+        d.add(Rect(x0, alto / 2 - swatch / 2, swatch, swatch, fillColor=COLOR_CATEGORIA_IAS[cat], strokeColor=None))
+        d.add(String(x0 + swatch + gap_swatch_texto, alto / 2 - 3, cat, fontName=fuente, fontSize=tam, fillColor=TEXT))
+    return d
+
+
+def _seccion_cumplimiento_nom(anio, estilos, datos):
+    story = [Paragraph(f"Cumplimiento de las NOM de calidad del aire, {anio}", estilos["h2"])]
+
+    story.append(Paragraph(
+        "Para cada estación de la red se compara el valor estadístico correspondiente (percentil 99, "
+        "promedio o máximo, según lo que establece cada Norma Oficial Mexicana) contra el límite "
+        f"vigente para {anio}. Cuando una estación no alcanza el 75&nbsp;% de días válidos en el año, "
+        "el resultado se reporta como dato insuficiente (D.I.).",
+        estilos["cuerpo"],
+    ))
+
+    filas_nom = datos.get("cumplimiento_nom")
+    if not filas_nom:
+        story.append(Paragraph("[Faltan los datos de cumplimiento de NOM]", estilos["caption"]))
+        return story
+
+    story.append(KeepTogether([
+        Paragraph(
+            "Tabla 5. Cumplimiento de las NOM de calidad del aire, por estación.",
+            estilos["tabla_caption"],
+        ),
+        _tabla_cumplimiento_nom(datos["estaciones"], filas_nom, estilos),
+        Spacer(1, 8),
+        _leyenda_cumplimiento_nom(),
+        Paragraph(
+            "D.I.: la estación no alcanzó el 75&nbsp;% de días válidos requerido en el año. "
+            "FO: la estación cuenta con el equipo pero permaneció fuera de operación todo el año. "
+            "¤: la estación no mide ese contaminante.",
+            estilos["nota"],
+        ),
+    ]))
+
+    return story
+
+
+def _formatear_valor_nom(valor, fila_nom):
+    if valor is None:
+        return ""
+    if fila_nom["unidad"] == "µg/m³":
+        return f"{valor:.0f}"
+    if fila_nom["contaminante"] == "CO":
+        return f"{valor:.1f}"
+    return f"{valor:.3f}"
+
+
+def _celda_nom_contenido(resultado, fila_nom, contaminantes_capacidad, estilos):
+    """Devuelve (texto, color_fondo, estilo) para una celda de la Tabla 5,
+    resolviendo aquí (no en calculo_datos.py) si un "sin_datos" es en
+    realidad una estación fuera de operación (FO) o sin ese equipo (¤)."""
+    status = resultado.get("status")
+    valor = resultado.get("valor")
+
+    if status == "sin_datos":
+        clave_capacidad = CAPACIDAD_POR_CONTAMINANTE[fila_nom["contaminante"]]
+        tiene_equipo = (contaminantes_capacidad or {}).get(clave_capacidad, True)
+        status = "FO" if tiene_equipo else "sin_equipo"
+
+    if status == "cumple":
+        return _formatear_valor_nom(valor, fila_nom), COLOR_NOM_CUMPLE, estilos["nom_celda_clara"]
+    if status == "no_cumple":
+        return _formatear_valor_nom(valor, fila_nom), COLOR_NOM_NO_CUMPLE, estilos["nom_celda_clara"]
+    if status == "DI":
+        return "D.I.", COLOR_NOM_DI, estilos["nom_celda_oscura"]
+    if status == "FO":
+        return "FO", COLOR_NOM_FO, estilos["nom_celda_oscura"]
+    return "¤", COLOR_NOM_SIN_EQUIPO, estilos["nom_celda_oscura"]
+
+
+def _tabla_cumplimiento_nom(estaciones, filas_nom, estilos):
+    """Tabla 5: filas = parámetro NOM (contaminante + periodo), columnas =
+    estaciones agrupadas por municipio (mismo orden que la Tabla 1)."""
+    claves = [e["simbolo"] for e in estaciones]
+    municipios = [e["municipio"] for e in estaciones]
+    grupos_municipio = _spans_de_grupos(municipios)
+    equipo_por_clave = {e["simbolo"]: e["contaminantes"] for e in estaciones}
+
+    col_etiqueta = CONTENT_WIDTH * 0.185
+    col_estacion = (CONTENT_WIDTH - col_etiqueta) / len(claves)
+
+    fila_header_1 = [Paragraph("Parámetro · Periodo", estilos["tabla_header"])]
+    for _ in claves:
+        fila_header_1.append("")
+    for (i0, i1) in grupos_municipio:
+        etiqueta_municipio = MUNICIPIO_CORTO.get(municipios[i0], municipios[i0])
+        fila_header_1[1 + i0] = Paragraph(etiqueta_municipio, estilos["tabla_subheader_chico"])
+    fila_header_2 = [""] + [Paragraph(c, estilos["tabla_subheader"]) for c in claves]
+
+    data = [fila_header_1, fila_header_2]
+    fondos = []  # (fila, col, color_fondo) para las celdas de resultado
+    for r, fila_nom in enumerate(filas_nom, start=2):
+        etiqueta = Paragraph(
+            f"{fila_nom['simbolo']} · {fila_nom['periodo']}<br/>"
+            f"<font color='#6C8894' size=6.4>{fila_nom['limite_txt']} {fila_nom['unidad']}</font>",
+            estilos["nom_etiqueta"],
+        )
+        renglon = [etiqueta]
+        for c, clave in enumerate(claves, start=1):
+            resultado = fila_nom["estaciones"].get(clave, {})
+            texto, color_fondo, estilo_txt = _celda_nom_contenido(
+                resultado, fila_nom, equipo_por_clave.get(clave), estilos,
+            )
+            renglon.append(Paragraph(texto, estilo_txt))
+            fondos.append((r, c, color_fondo))
+        data.append(renglon)
+
+    anchos = [col_etiqueta] + [col_estacion] * len(claves)
+    tabla = Table(data, colWidths=anchos, repeatRows=2)
+
+    estilo_cmds = [
+        ("BACKGROUND", (0, 0), (-1, 1), NAVY),
+        ("SPAN", (0, 0), (0, 1)),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#D7DEE1")),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (1, 0), (-1, -1), 2),
+        ("RIGHTPADDING", (1, 0), (-1, -1), 2),
+        ("LEFTPADDING", (0, 0), (0, -1), 6),
+        ("RIGHTPADDING", (0, 0), (0, -1), 6),
+        ("LEFTPADDING", (1, 0), (-1, 0), 1),
+        ("RIGHTPADDING", (1, 0), (-1, 0), 1),
+    ]
+
+    for (i0, i1) in grupos_municipio:
+        if i1 > i0:
+            estilo_cmds.append(("SPAN", (1 + i0, 0), (1 + i1, 0)))
+
+    for r, c, color_fondo in fondos:
+        estilo_cmds.append(("BACKGROUND", (c, r), (c, r), color_fondo))
+
+    tabla.setStyle(TableStyle(estilo_cmds))
+    return tabla
+
+
+def _leyenda_cumplimiento_nom():
+    fuente, tam = "Montserrat", 8.5
+    swatch = 10
+    gap_swatch_texto = 4
+    gap_items = 16
+    alto = 14
+
+    items_leyenda = [
+        ("Cumple", COLOR_NOM_CUMPLE),
+        ("No cumple", COLOR_NOM_NO_CUMPLE),
+        ("D.I.", COLOR_NOM_DI),
+        ("FO", COLOR_NOM_FO),
+        ("¤ Sin equipo", COLOR_NOM_SIN_EQUIPO),
+    ]
+
+    items = []
+    x = 0.0
+    for texto, color_fondo in items_leyenda:
+        ancho_texto = pdfmetrics.stringWidth(texto, fuente, tam)
+        items.append((texto, color_fondo, x, ancho_texto))
+        x += swatch + gap_swatch_texto + ancho_texto + gap_items
+    ancho_total = x - gap_items
+
+    d = Drawing(ancho_total, alto)
+    for texto, color_fondo, x0, ancho_texto in items:
+        d.add(Rect(x0, alto / 2 - swatch / 2, swatch, swatch, fillColor=color_fondo,
+                  strokeColor=colors.HexColor("#B7C2C7"), strokeWidth=0.5))
+        d.add(String(x0 + swatch + gap_swatch_texto, alto / 2 - 3, texto, fontName=fuente, fontSize=tam, fillColor=TEXT))
+    return d
 
 
 def _callout(texto_html, estilos):
@@ -801,6 +1353,9 @@ def generar_informe(anio, salida=None):
     story += _seccion_introduccion(anio, estilos)
     story += _seccion_simaj(anio, estilos, datos)
     story += _seccion_evaluacion_nom(estilos, datos)
+    story += _seccion_panorama_general(anio, estilos, datos)
+    story += _seccion_horas_categoria(anio, estilos, datos)
+    story += _seccion_cumplimiento_nom(anio, estilos, datos)
 
     dibujar_portada = _dibujar_portada(anio, datos)
     pintar_fondo = _fondo_pagina(anio)
@@ -808,11 +1363,47 @@ def generar_informe(anio, salida=None):
     return salida
 
 
+def _asegurar_datos_anio(anio, forzar=False):
+    """Si el año pedido no está todavía en datos/resumen_historico.json (o se
+    pide --recalcular), descarga BD_{anio} de Google Sheets y calcula sus
+    cifras con calculo_datos.py, antes de armar el PDF. Así "python
+    generar_informe.py --anio 2024" funciona con un solo comando, aunque sea
+    la primera vez que se pide ese año."""
+    historico = _cargar_resumen_historico()
+    if not forzar and str(anio) in historico:
+        return
+
+    try:
+        import calculo_datos
+    except ImportError as exc:
+        print(f"Aviso: no se pudo importar calculo_datos.py ({exc}). Se usarán los valores de ejemplo si existen.")
+        return
+
+    try:
+        calculo_datos.actualizar_historico(anio)
+    except Exception as exc:
+        print(
+            f"Aviso: no se pudieron descargar/calcular los datos reales de {anio} ({exc}). "
+            "Se usarán los valores de ejemplo si existen para ese año."
+        )
+
+
 def _main():
     parser = argparse.ArgumentParser(description="Genera el Informe Anual de Calidad del Aire de Jalisco.")
     parser.add_argument("--anio", type=int, required=True, help="Año del informe, p. ej. 2024")
     parser.add_argument("--salida", type=str, default=None, help="Ruta del PDF de salida")
+    parser.add_argument(
+        "--recalcular", action="store_true",
+        help="Vuelve a descargar BD_{anio} y a calcular sus cifras aunque el año ya esté en el histórico",
+    )
+    parser.add_argument(
+        "--sin-datos-nuevos", action="store_true",
+        help="No descarga ni calcula nada nuevo; usa solo lo que ya haya en datos/resumen_historico.json",
+    )
     args = parser.parse_args()
+
+    if not args.sin_datos_nuevos:
+        _asegurar_datos_anio(args.anio, forzar=args.recalcular)
 
     ruta = generar_informe(args.anio, args.salida)
     print(f"PDF generado en: {ruta}")

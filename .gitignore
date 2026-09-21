@@ -1,0 +1,3 @@
+informe_pdf/datos/_cache/
+informe_pdf/__pycache__/
+*.pyc
