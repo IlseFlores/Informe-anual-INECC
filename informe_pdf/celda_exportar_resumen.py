@@ -7,6 +7,8 @@
 # Qué hace:
 #   - Toma de res_comp_est los días IAS "Buena" + "Aceptable" de la
 #     estación AMG para el año que se acaba de procesar (`anio`).
+#   - También guarda los días Buena+Aceptable de cada estación (mapa de
+#     burbujas de la Figura 4).
 #   - Actualiza (sin borrar años anteriores) un único archivo
 #     resumen_historico.json compartido entre todos los años.
 #   - generar_informe.py lee ese archivo para armar la Figura 2 y su
@@ -17,7 +19,32 @@
 # vas construyendo el histórico de 2019 a 2024 poco a poco.
 # ================================================================
 import json
+import calendar
 from pathlib import Path
+
+ESTACIONES_RED = ["AGU", "ATM", "CEN", "COU", "LDO", "MIR", "OBL", "PIN", "SAN", "SFE", "SMT", "TLA", "VAL"]
+
+
+def dias_buena_aceptable_por_estacion(res_comp_est, anio):
+    """Días IAS Buena + Aceptable por estación (para el mapa de burbujas).
+    Una estación es "suficiente" si tiene >= 274 días clasificados (275 en
+    año bisiesto), igual que el filtro de suficiencia anual del notebook."""
+    minimo = 275 if calendar.isleap(anio) else 274
+    salida = {}
+    for est in ESTACIONES_RED:
+        fila = res_comp_est[(res_comp_est["STATION"] == est) & (res_comp_est["ANIO"] == anio)]
+        if fila.empty:
+            salida[est] = {"dias": 0, "validos": 0, "suficiente": False}
+            continue
+        f = fila.iloc[0]
+        validos = int(f["DIAS_IAS_BUENA"] + f["DIAS_IAS_ACEPTABLE"] + f["DIAS_IAS_MALA"]
+                      + f["DIAS_IAS_MUY_MALA"] + f["DIAS_IAS_EXTREMADAMENTE_MALA"])
+        salida[est] = {
+            "dias": int(f["DIAS_IAS_BUENA"] + f["DIAS_IAS_ACEPTABLE"]),
+            "validos": validos,
+            "suficiente": validos >= minimo,
+        }
+    return salida
 
 
 def exportar_resumen_informe(anio: int, res_comp_est: pd.DataFrame, ruta_resumen: str, estacion: str = "AMG") -> dict:
@@ -44,6 +71,7 @@ def exportar_resumen_informe(anio: int, res_comp_est: pd.DataFrame, ruta_resumen
     entrada = historico.get(str(anio), {})
     entrada.update({
         "dias_buena_aceptable": dias_buena_aceptable,
+        "dias_buena_aceptable_estaciones": dias_buena_aceptable_por_estacion(res_comp_est, anio),
     })
     historico[str(anio)] = entrada
 

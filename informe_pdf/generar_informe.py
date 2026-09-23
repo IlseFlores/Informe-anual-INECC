@@ -51,7 +51,7 @@ from reportlab.platypus import (
     Image, KeepTogether, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
 )
 from reportlab.lib.utils import ImageReader
-from reportlab.graphics.shapes import Drawing, Circle, Line, Rect, String
+from reportlab.graphics.shapes import Drawing, Circle, Line, Rect, String, Group
 
 BASE_DIR = Path(__file__).resolve().parent
 FONTS_DIR = BASE_DIR / "assets" / "fonts"
@@ -71,12 +71,30 @@ LIGHT = colors.HexColor("#E3E9EC")
 TEXT = colors.HexColor("#324D59")
 MUTED = colors.HexColor("#6C8894")
 
+# Paleta del notebook (gráficas de violín).
+AZUL_SEMADET = colors.HexColor("#4DC283")
+NARANJA_SEMADET = colors.HexColor("#ff8300")
+GRIS_SEMADET = colors.HexColor("#465055")
+
 PAGE_SIZE = letter
 MARGIN = 2.2 * cm
 CONTENT_WIDTH = PAGE_SIZE[0] - 2 * MARGIN
 
 # Mismo orden de estaciones que EST_ORDER_BASE en calculo_datos.py / tu notebook.
 ORDEN_ESTACIONES_HORAS = ["AGU", "ATM", "CEN", "COU", "LDO", "MIR", "OBL", "PIN", "SAN", "SFE", "SMT", "TLA", "VAL"]
+
+# Coordenadas (lon, lat) de las estaciones, para el mapa de burbujas (Figura 4).
+COORDENADAS_ESTACIONES = {
+    "COU": (-103.3582532, 20.6981254), "AGU": (-103.4167756, 20.6312293), "ATM": (-103.355412, 20.719626),
+    "CEN": (-103.333243, 20.673844), "LDO": (-103.256809, 20.631665), "MIR": (-103.343352, 20.614511),
+    "OBL": (-103.296648, 20.700501), "PIN": (-103.326533, 20.576708), "SAN": (-103.447256, 20.5519704),
+    "SFE": (-103.37718, 20.528954), "SMT": (-103.431768, 20.723836), "TLA": (-103.312497, 20.640941),
+    "VAL": (-103.398572, 20.680141),
+}
+COLOR_BURBUJA = colors.HexColor("#2E9E3B")
+
+# Figura 5 (perfil horario anual, una sola línea encadenada por mes).
+MES_LABELS_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
 # Colores de las categorías IAS (mismos que en categorias_ias, para Tabla 4)
 # más gris para "D.I.". Las claves deben coincidir exactamente con las que
@@ -256,10 +274,33 @@ def _datos_del_anio(anio):
         if serie:
             datos["serie_dias_buena_aceptable"] = serie
 
+    if "dias_buena_aceptable_estaciones" in entrada_anio:
+        mapas = {}
+        for i in range(ANIOS_HISTORICO):
+            anio_i = anio - i
+            valor = historico.get(str(anio_i), {}).get("dias_buena_aceptable_estaciones")
+            if valor is not None:
+                mapas[anio_i] = valor
+        if mapas:
+            datos["dias_estaciones_por_anio"] = mapas
+
+    if "dias_buena_aceptable_estaciones_contaminante" in entrada_anio:
+        por_pol = {}
+        for pol in entrada_anio["dias_buena_aceptable_estaciones_contaminante"]:
+            por_anio = {}
+            for i in range(ANIOS_HISTORICO):
+                anio_i = anio - i
+                valor = historico.get(str(anio_i), {}).get("dias_buena_aceptable_estaciones_contaminante", {}).get(pol)
+                if valor is not None:
+                    por_anio[anio_i] = valor
+            por_pol[pol] = por_anio
+        datos["dias_estaciones_contaminante_por_anio"] = por_pol
+
     # Cualquier otra cifra del histórico que ya tenga el mismo nombre que un
     # campo de DATOS_POR_ANIO simplemente lo sobreescribe (p. ej. población).
     for clave, valor in entrada_anio.items():
-        if clave != "dias_buena_aceptable":
+        if clave not in ("dias_buena_aceptable", "dias_buena_aceptable_estaciones",
+                         "dias_buena_aceptable_estaciones_contaminante"):
             datos[clave] = valor
 
     return datos
@@ -284,6 +325,10 @@ def _estilos():
         "h2": ParagraphStyle(
             "h2", fontName="Montserrat-Bold", fontSize=14, leading=18,
             textColor=NAVY, spaceBefore=22, spaceAfter=10,
+        ),
+        "h3": ParagraphStyle(
+            "h3", fontName="Montserrat-Bold", fontSize=11.5, leading=15,
+            textColor=NAVY, spaceBefore=14, spaceAfter=8,
         ),
         "cuerpo": ParagraphStyle(
             "cuerpo", fontName="Montserrat", fontSize=10.3, leading=16.5,
@@ -798,11 +843,22 @@ def _texto_horas_categoria(anio, datos_estacion, orden_estaciones=ORDEN_ESTACION
             "todavía con un ciclo anual completo de mediciones."
         )
 
+    amg = datos_estacion.get("AMG")
+    frase_amg = ""
+    if amg:
+        favorable_amg = amg.get("Buena", 0) + amg.get("Aceptable", 0)
+        desfavorable_amg = amg.get("Mala", 0) + amg.get("Muy mala", 0) + amg.get("Extremadamente mala", 0)
+        frase_amg = (
+            " La última barra corresponde al AMG en conjunto, que en cada hora toma la categoría más "
+            f"desfavorable entre todas las estaciones: durante {anio}, {favorable_amg:.0f} % de las horas "
+            f"fue Buena o Aceptable y {desfavorable_amg:.0f} % fue Mala o peor."
+        )
+
     suficientes = [f for f in filas if f[3] < UMBRAL_DI_SUFICIENTE]
     if not suficientes:
         return (
             f"{frase_intro} La mayoría de las estaciones no cuentan todavía con suficientes horas "
-            f"válidas en el año para comparar su desempeño.{frase_incompletas}"
+            f"válidas en el año para comparar su desempeño.{frase_incompletas}{frase_amg}"
         )
 
     mejor = max(suficientes, key=lambda f: f[1])
@@ -812,11 +868,11 @@ def _texto_horas_categoria(anio, datos_estacion, orden_estaciones=ORDEN_ESTACION
         f"{frase_intro} Entre las estaciones con datos suficientes durante {anio}, {mejor[0]} registró "
         f"la mayor proporción de horas en categoría Buena o Aceptable ({mejor[1]:.0f} % del año), "
         f"mientras que {peor[0]} presentó la mayor proporción de horas en categoría Mala o peor "
-        f"({peor[2]:.0f} % del año).{frase_incompletas}"
+        f"({peor[2]:.0f} % del año).{frase_incompletas}{frase_amg}"
     )
 
 
-def _grafica_horas_categoria(datos_estacion, orden_estaciones=ORDEN_ESTACIONES_HORAS):
+def _grafica_horas_categoria(datos_estacion, orden_estaciones=ORDEN_ESTACIONES_HORAS + ["AMG"]):
     """Barras horizontales 100% apiladas: para cada estación, qué porcentaje
     de horas del año cayó en cada categoría IAS (o D.I.)."""
     ancho = CONTENT_WIDTH
@@ -825,15 +881,17 @@ def _grafica_horas_categoria(datos_estacion, orden_estaciones=ORDEN_ESTACIONES_H
     espacio = 6
     pad_arriba, pad_abajo = 4, 4
     n = len(orden_estaciones)
-    alto = pad_arriba + n * fila_h + (n - 1) * espacio + pad_abajo
+    separacion_amg = 8  # aire extra antes de la barra del AMG, para distinguirla de las estaciones
+    hay_amg = "AMG" in orden_estaciones
+    alto = pad_arriba + n * fila_h + (n - 1) * espacio + pad_abajo + (separacion_amg if hay_amg else 0)
     barra_w = ancho - etiqueta_w
 
     d = Drawing(ancho, alto)
 
     for i, est in enumerate(orden_estaciones):
-        y = alto - pad_arriba - (i + 1) * fila_h - i * espacio
+        y = alto - pad_arriba - (i + 1) * fila_h - i * espacio - (separacion_amg if est == "AMG" else 0)
         d.add(String(etiqueta_w - 8, y + fila_h / 2 - 3, est, fontName="Montserrat-Bold",
-                     fontSize=8.4, fillColor=NAVY, textAnchor="end"))
+                     fontSize=8.4, fillColor=AQUA if est == "AMG" else NAVY, textAnchor="end"))
 
         valores = datos_estacion.get(est, {})
         x = etiqueta_w
@@ -868,6 +926,535 @@ def _leyenda_categorias_ias():
     for cat, x0, ancho_texto in items:
         d.add(Rect(x0, alto / 2 - swatch / 2, swatch, swatch, fillColor=COLOR_CATEGORIA_IAS[cat], strokeColor=None))
         d.add(String(x0 + swatch + gap_swatch_texto, alto / 2 - 3, cat, fontName=fuente, fontSize=tam, fillColor=TEXT))
+    return d
+
+
+def _seccion_monoxido_carbono(anio, estilos, datos):
+    story = [PageBreak(), Paragraph("Monóxido de carbono", estilos["h2"])]
+
+    story.append(Paragraph(
+        "El monóxido de carbono es un gas incoloro e inodoro, que se forma de manera natural en la atmósfera "
+        "mediante la oxidación de metano (CH₄), destacando que el monóxido de carbono se origina "
+        "principalmente por reacciones de combustión incompleta que contiene carbono, así como el carbono "
+        "proveniente del combustible aún no quemado. Siendo la combustión incompleta la reacción que genera "
+        "mayor emisión en la concentración del CO, producto de la combustión por gasolina, gas, carbón, madera "
+        "y/o combustóleo de los automóviles que no cuentan con un convertidor catalítico que permita reducir "
+        "las emisiones.",
+        estilos["cuerpo"],
+    ))
+    story.append(Paragraph(
+        "Su fuente de emisión se genera por la quema incompleta de combustibles. Los automóviles son la "
+        "principal fuente de emisión.",
+        estilos["cuerpo"],
+    ))
+    story.append(Paragraph(
+        "Puede producir hipoxia en el ser humano, causando una deficiencia de oxígeno en las células y los "
+        "tejidos, así como riesgos en mortalidad por causas cardiovasculares, y la asociación a enfermedades "
+        "respiratorias como asma, bronquitis y neumonía (Secretaría de Salud NOM-021-SSA1-1993, 2020).",
+        estilos["cuerpo"],
+    ))
+
+    story += _seccion_perfil_horario_mensual(anio, estilos, datos, "CO", "CO", "ppm", "Figura 5")
+    story += _seccion_violines_mensuales(
+        anio, estilos, datos, "CO", "CO", "ppm", "Figura 6",
+        serie="promedio móvil de 8 horas", limite=9.0, texto_limite="límite de la NOM-021-SSA1 (9 ppm en 8 horas)",
+    )
+    story += _seccion_mapa_dias_estaciones(
+        anio, estilos, datos, contaminante="CO", nombre="CO", numero_figura="Figura 7",
+        nivel_titulo="h3", serie="máximo diario del promedio móvil de 8 horas",
+    )
+    return story
+
+
+def _seccion_perfil_horario_mensual(anio, estilos, datos, contaminante, nombre, unidad, numero_figura):
+    story = [Paragraph(f"Comportamiento horario mensual de {nombre} en el AMG", estilos["h3"])]
+
+    story.append(Paragraph(
+        f"Para cada hora del año se toma la concentración máxima de {nombre} entre las estaciones de la red, "
+        "que representa al AMG, y se promedia por hora del día dentro de cada mes de "
+        f"{anio} (se exigen al menos 6 días con dato por hora, y se aplica una media móvil de 3 horas "
+        f"solo para suavizar la visualización). La {numero_figura} encadena esos doce ciclos de 24 horas, uno "
+        "por mes, en una sola línea continua.",
+        estilos["cuerpo"],
+    ))
+
+    perfil_anio = (datos.get("perfil_horario") or {}).get(contaminante)
+    if not perfil_anio:
+        story.append(Paragraph("[Faltan los datos del perfil horario mensual]", estilos["caption"]))
+        return story
+
+    story.append(KeepTogether([
+        Paragraph(
+            f"{numero_figura}. Concentración promedio horaria de {nombre} en el AMG, encadenada por mes, {anio}.",
+            estilos["tabla_caption"],
+        ),
+        _grafica_perfil_horario_anual(perfil_anio, f"Concentración promedio de {nombre} ({unidad})"),
+    ]))
+
+    return story
+
+
+def _seccion_violines_mensuales(anio, estilos, datos, contaminante, nombre, unidad, numero_figura,
+                                serie, limite=None, texto_limite=""):
+    story = [Paragraph(f"Distribución horaria mensual de {nombre} en el AMG", estilos["h3"])]
+
+    mensual = (datos.get("violines_mensuales") or {}).get(contaminante)
+    if not mensual:
+        story.append(Paragraph("[Faltan los datos de la distribución mensual]", estilos["caption"]))
+        return story
+
+    meses_di = [MES_LABELS_ES[int(m) - 1] for m, v in mensual.items() if not v["valido"]]
+    validos = [v for v in mensual.values() if v["valido"]]
+    maximo = max(v["kde_x"][-1] for v in validos) if validos else None
+
+    texto = (
+        f"La {numero_figura} muestra, para cada mes de {anio}, la distribución de las concentraciones "
+        f"horarias de {nombre} en el AMG ({serie}; en cada hora se toma el valor más alto entre las "
+        "estaciones). El contorno del violín indica qué tan frecuentes son los distintos valores; la caja "
+        "abarca del primer al tercer cuartil, la línea blanca es la mediana y el punto blanco, la media. "
+        "Solo se grafican los meses con al menos 75 % de sus horas con dato."
+    )
+    if meses_di:
+        texto += f" Los meses sin suficientes datos se indican como D.I. ({', '.join(meses_di)})."
+    if limite is not None and maximo is not None:
+        if maximo < limite:
+            texto += (f" El valor más alto del año, {maximo:.1f} {unidad}, se mantuvo por debajo del "
+                      f"{texto_limite}.")
+        else:
+            texto += f" El valor más alto del año, {maximo:.1f} {unidad}, superó el {texto_limite}."
+    story.append(Paragraph(texto, estilos["cuerpo"]))
+
+    story.append(KeepTogether([
+        Paragraph(
+            f"{numero_figura}. Distribución horaria mensual de {nombre} ({serie}) en el AMG, {anio}.",
+            estilos["tabla_caption"],
+        ),
+        _grafica_violines_mensuales(mensual, f"Concentración de {nombre} ({unidad})", limite),
+        Spacer(1, 4),
+        _leyenda_violines(),
+    ]))
+    return story
+
+
+def _grafica_violines_mensuales(mensual, etiqueta_y, limite=None):
+    """Violines por mes con la paleta del notebook (violín naranja, caja
+    negra, mediana y media blancas, atípicos gris, límite NOM 8 h en azul)."""
+    from reportlab.graphics.shapes import Polygon
+    ancho, alto = CONTENT_WIDTH, 185
+    pad_izq, pad_der, pad_abajo, pad_arriba = 42, 4, 20, 8
+    plot_w, plot_h = ancho - pad_izq - pad_der, alto - pad_abajo - pad_arriba
+    mes_w = plot_w / 12
+
+    validos = [v for v in mensual.values() if v["valido"]]
+    y_top = max(v["kde_x"][-1] for v in validos) * 1.2 if validos else 1.0
+    paso = _paso_eje(y_top, max_ticks=16)
+    n_pasos = int(y_top // paso)
+
+    d = Drawing(ancho, alto)
+
+    def y_de(v):
+        return pad_abajo + plot_h * v / y_top
+
+    for i in range(n_pasos + 1):
+        nivel = i * paso
+        y = y_de(nivel)
+        d.add(Line(pad_izq, y, ancho - pad_der, y, strokeColor=colors.HexColor("#EEF2F3"), strokeWidth=0.5))
+        d.add(String(pad_izq - 5, y - 2.5, f"{nivel:.1f}",
+                     fontName="Montserrat", fontSize=7.4, fillColor=MUTED, textAnchor="end"))
+    d.add(Group(
+        String(0, 0, etiqueta_y, fontName="Montserrat", fontSize=7.6, fillColor=TEXT, textAnchor="middle"),
+        transform=(0, 1, -1, 0, 9, pad_abajo + plot_h / 2),
+    ))
+
+    if limite is not None and limite <= y_top:
+        y = y_de(limite)
+        d.add(Line(pad_izq, y, ancho - pad_der, y, strokeColor=AZUL_SEMADET, strokeWidth=1.3, strokeDashArray=[3, 2]))
+
+    negro = colors.black
+    mitad = mes_w * 0.36
+    for m in range(1, 13):
+        cx = pad_izq + (m - 0.5) * mes_w
+        v = mensual.get(str(m), {"valido": False})
+        d.add(String(cx, 6, MES_LABELS_ES[m - 1], fontName="Montserrat-Bold", fontSize=7.6,
+                     fillColor=NAVY, textAnchor="middle"))
+        if not v["valido"]:
+            d.add(String(cx, pad_abajo + 3, "D.I.", fontName="Montserrat-Bold", fontSize=7,
+                         fillColor=GRIS_SEMADET, textAnchor="middle"))
+            continue
+
+        derecha = [(cx + mitad * dy, y_de(x)) for x, dy in zip(v["kde_x"], v["kde_y"])]
+        izquierda = [(cx - mitad * dy, y_de(x)) for x, dy in zip(v["kde_x"], v["kde_y"])]
+        pts = []
+        for x, y in derecha + izquierda[::-1]:
+            pts += [x, y]
+        poligono = Polygon(pts, fillColor=NARANJA_SEMADET, strokeColor=negro, strokeWidth=0.6)
+        poligono.fillOpacity = 0.6
+        d.add(poligono)
+
+        for a in v["atipicos"]:
+            d.add(Circle(cx, y_de(a), 0.7, fillColor=GRIS_SEMADET, strokeColor=None))
+
+        d.add(Line(cx, y_de(v["bigote_inf"]), cx, y_de(v["bigote_sup"]), strokeColor=negro, strokeWidth=0.8))
+        for b in (v["bigote_inf"], v["bigote_sup"]):
+            d.add(Line(cx - 1.8, y_de(b), cx + 1.8, y_de(b), strokeColor=negro, strokeWidth=0.8))
+        caja = Rect(cx - 2, y_de(v["q1"]), 4, y_de(v["q3"]) - y_de(v["q1"]), fillColor=negro, strokeColor=negro)
+        caja.fillOpacity = 0.6
+        d.add(caja)
+        d.add(Line(cx - 2, y_de(v["mediana"]), cx + 2, y_de(v["mediana"]), strokeColor=colors.white, strokeWidth=1.0))
+        d.add(Circle(cx, y_de(v["media"]), 1.7, fillColor=colors.white, strokeColor=None))
+
+    return d
+
+
+def _leyenda_violines():
+    fuente, tam = "Montserrat", 7.8
+    d = Drawing(CONTENT_WIDTH, 14)
+    x = 0.0
+
+    def texto(t):
+        nonlocal x
+        d.add(String(x, 4, t, fontName=fuente, fontSize=tam, fillColor=TEXT))
+        x += pdfmetrics.stringWidth(t, fuente, tam) + 14
+
+    poligono = Rect(x, 2, 9, 9, fillColor=NARANJA_SEMADET, strokeColor=colors.black, strokeWidth=0.6)
+    poligono.fillOpacity = 0.6
+    d.add(poligono); x += 13; texto("Distribución (violín)")
+    caja = Rect(x, 2, 9, 9, fillColor=colors.black, strokeColor=colors.black)
+    caja.fillOpacity = 0.6
+    d.add(caja); x += 13; texto("IQR (caja)")
+    d.add(Line(x, 6.5, x + 9, 6.5, strokeColor=colors.black, strokeWidth=1.4)); x += 13; texto("Mediana")
+    d.add(Circle(x + 4, 6.5, 2.2, fillColor=colors.white, strokeColor=colors.black, strokeWidth=0.5)); x += 11; texto("Media")
+    d.add(Circle(x + 3, 6.5, 1.2, fillColor=GRIS_SEMADET, strokeColor=None)); x += 9; texto("Valores atípicos")
+    return d
+
+
+def _suavizar_3h(valores):
+    """Media móvil centrada de 3 puntos (min_periods=1), solo visual."""
+    salida = []
+    for i in range(len(valores)):
+        ventana = [v for v in valores[max(0, i - 1):i + 2] if v is not None]
+        salida.append(sum(ventana) / len(ventana) if ventana else None)
+    return salida
+
+
+def _paso_eje(maximo, max_ticks=9):
+    for paso in (0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5, 10, 20, 25, 50, 100, 200, 500):
+        if maximo / paso <= max_ticks:
+            return paso
+    return 1000
+
+
+def _grafica_perfil_horario_anual(perfil_anio, etiqueta_y):
+    """Una sola línea continua: los 12 ciclos de 24 horas (uno por mes)
+    encadenados en orden Ene -> Dic, con el eje Y en unidades de concentración."""
+    series = []
+    for mes in range(1, 13):
+        crudo = perfil_anio.get(str(mes), {})
+        series.append(_suavizar_3h([crudo.get(str(h)) for h in range(24)]))
+
+    todos = [v for serie in series for v in serie if v is not None]
+    paso = _paso_eje(max(todos))
+    n_pasos = int(max(todos) // paso) + 1
+    y_max = n_pasos * paso
+
+    ancho = CONTENT_WIDTH
+    alto = 200
+    pad_izq, pad_der = 42, 4
+    pad_abajo_horas, pad_abajo_meses = 12, 14
+    pad_abajo = pad_abajo_horas + pad_abajo_meses
+    pad_arriba = 8
+    plot_w = ancho - pad_izq - pad_der
+    plot_h = alto - pad_arriba - pad_abajo
+    mes_w = plot_w / 12
+
+    d = Drawing(ancho, alto)
+
+    def x_de(mes_idx, hora):
+        return pad_izq + mes_idx * mes_w + mes_w * hora / 23
+
+    def y_de(valor):
+        return pad_abajo + plot_h * valor / y_max
+
+    for i in range(n_pasos + 1):
+        nivel = i * paso
+        y = y_de(nivel)
+        d.add(Line(pad_izq, y, ancho - pad_der, y, strokeColor=colors.HexColor("#EEF2F3"), strokeWidth=0.5))
+        d.add(String(pad_izq - 5, y - 2.5, f"{nivel:.1f}" if paso < 1 else f"{nivel:.0f}", fontName="Montserrat", fontSize=7.4,
+                     fillColor=MUTED, textAnchor="end"))
+
+    d.add(Group(
+        String(0, 0, etiqueta_y, fontName="Montserrat", fontSize=7.6, fillColor=TEXT, textAnchor="middle"),
+        transform=(0, 1, -1, 0, 9, pad_abajo + plot_h / 2),
+    ))
+
+    for mes_idx in range(13):
+        x = pad_izq + mes_idx * mes_w
+        d.add(Line(x, pad_abajo, x, alto - pad_arriba, strokeColor=colors.HexColor("#E1E7EA"), strokeWidth=0.5))
+
+    for mes_idx in range(12):
+        for hora in (0, 6, 12, 18):
+            d.add(String(x_de(mes_idx, hora), pad_abajo - 9, str(hora), fontName="Montserrat",
+                         fontSize=5.6, fillColor=MUTED, textAnchor="middle"))
+        d.add(String(pad_izq + mes_idx * mes_w + mes_w / 2, 4, MES_LABELS_ES[mes_idx],
+                     fontName="Montserrat-Bold", fontSize=7.6, fillColor=NAVY, textAnchor="middle"))
+
+    puntos = [
+        (x_de(mes_idx, hora), y_de(valor))
+        for mes_idx, serie in enumerate(series)
+        for hora, valor in enumerate(serie)
+        if valor is not None
+    ]
+    for (x1, y1), (x2, y2) in zip(puntos, puntos[1:]):
+        d.add(Line(x1, y1, x2, y2, strokeColor=AQUA, strokeWidth=1.3))
+
+    return d
+
+
+def _seccion_mapa_dias_estaciones(anio, estilos, datos, contaminante=None, nombre=None, numero_figura="Figura 4",
+                                  nivel_titulo="h2", serie=None):
+    """Mosaico de mapas de burbujas con los días Buena/Aceptable por estación.
+    Sin `contaminante`: IAS global (el contaminante más desfavorable de cada día).
+    Con `contaminante`: IAS de ese contaminante solo."""
+    sufijo = f" de {nombre}" if contaminante else ""
+    story = [Paragraph(f"Días con calidad del aire Buena o Aceptable por estación{sufijo}", estilos[nivel_titulo])]
+
+    if contaminante:
+        criterio = (f"considerando únicamente el {nombre}" + (f" ({serie})" if serie else ""))
+    else:
+        criterio = ("Un día se clasifica con la categoría del contaminante que resultó más desfavorable ese día")
+
+    mapas = (datos.get("dias_estaciones_contaminante_por_anio") or {}).get(contaminante) if contaminante         else datos.get("dias_estaciones_por_anio")
+
+    story.append(Paragraph(
+        f"Los mapas de la {numero_figura} muestran, año por año, cuántos días tuvo cada estación de monitoreo con "
+        "calidad del aire Buena o Aceptable según el Índice Aire y Salud (IAS)"
+        + (f", {criterio}" if contaminante else "")
+        + ". Cada burbuja está ubicada donde se encuentra la estación y su tamaño es proporcional a ese "
+        "número de días: mientras más grande, más días con aire de buena o aceptable calidad. "
+        + ("" if contaminante else criterio + ". ")
+        + "Así, los mapas permiten comparar tanto las zonas del AMG entre sí como la evolución de cada una de "
+        f"ellas entre {anio - ANIOS_HISTORICO + 1} y {anio}, con la misma escala de tamaño en todos los años.",
+        estilos["cuerpo"],
+    ))
+
+    if mapas and all(v["dias"] == v["validos"] for m in mapas.values() for v in m.values()):
+        story.append(Paragraph(
+            f"En todos los días con dato de estos años, el {nombre} se mantuvo en categoría Buena o Aceptable, "
+            "por lo que el tamaño de cada burbuja equivale también al número de días con medición válida.",
+            estilos["cuerpo"],
+        ))
+
+    story.append(Paragraph(
+        "Las burbujas con borde punteado corresponden a estaciones que no alcanzaron el 75 % de días con "
+        "dato en el año (por ejemplo, las que iniciaron operaciones o estuvieron fuera de servicio), por lo "
+        "que su total no cubre el año completo y no es comparable con el de las demás. Los puntos grises "
+        "indican estaciones sin datos en ese año.",
+        estilos["cuerpo"],
+    ))
+
+    if not mapas:
+        story.append(Paragraph("[Faltan los datos de días por estación]", estilos["caption"]))
+        return story
+
+    orden_anios = [anio - i for i in range(ANIOS_HISTORICO)]
+    story.append(KeepTogether([
+        Paragraph(
+            f"{numero_figura}. Días con calidad del aire Buena o Aceptable por estación{sufijo}, "
+            f"{orden_anios[-1]}–{orden_anios[0]}.",
+            estilos["tabla_caption"],
+        ),
+        _mosaico_mapas_dias(mapas, orden_anios),
+        Spacer(1, 6),
+        _leyenda_mapa_dias(),
+    ]))
+    return story
+
+
+MAPA_ZOOM = 13
+MAPA_RELLENO = 0.14  # margen alrededor de las estaciones, como fracción del lado
+RUTA_MAPA_BASE = IMG_DIR / "mapa_base_amg.png"
+
+
+def _mercator_px(lon, lat, zoom=MAPA_ZOOM):
+    import math
+    n = 256 * 2 ** zoom
+    x = (lon + 180) / 360 * n
+    y = (1 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2 * n
+    return x, y
+
+
+def _extension_mapa():
+    """Cuadrado (en píxeles Mercator del zoom fijo) que contiene todas las
+    estaciones más un margen. Lo comparten la imagen de fondo y las burbujas."""
+    pts = [_mercator_px(lon, lat) for lon, lat in COORDENADAS_ESTACIONES.values()]
+    xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+    cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+    lado = max(max(xs) - min(xs), max(ys) - min(ys)) * (1 + 2 * MAPA_RELLENO)
+    return cx - lado / 2, cy - lado / 2, lado
+
+
+def _asegurar_mapa_base():
+    """Devuelve la ruta de la imagen del mapa base (calles), descargando y
+    uniendo los tiles de OpenStreetMap la primera vez y guardándola en
+    assets/img para no volver a descargar. Se aclara/desatura para que las
+    burbujas resalten. Devuelve None si no hay red y no hay copia guardada."""
+    if RUTA_MAPA_BASE.exists():
+        return RUTA_MAPA_BASE
+    import urllib.request
+    x0, y0, lado = _extension_mapa()
+    tx0, ty0 = int(x0 // 256), int(y0 // 256)
+    tx1, ty1 = int((x0 + lado) // 256), int((y0 + lado) // 256)
+    mosaico = PILImage.new("RGB", ((tx1 - tx0 + 1) * 256, (ty1 - ty0 + 1) * 256))
+    try:
+        for tx in range(tx0, tx1 + 1):
+            for ty in range(ty0, ty1 + 1):
+                req = urllib.request.Request(
+                    f"https://tile.openstreetmap.org/{MAPA_ZOOM}/{tx}/{ty}.png",
+                    headers={"User-Agent": "SIMAJ-informe-calidad-aire/1.0 (informe anual)"},
+                )
+                with urllib.request.urlopen(req, timeout=30) as r:
+                    mosaico.paste(PILImage.open(io.BytesIO(r.read())).convert("RGB"), ((tx - tx0) * 256, (ty - ty0) * 256))
+    except OSError:
+        return None
+    recorte = mosaico.crop((
+        int(x0 - tx0 * 256), int(y0 - ty0 * 256),
+        int(x0 - tx0 * 256 + lado), int(y0 - ty0 * 256 + lado),
+    )).resize((900, 900), PILImage.LANCZOS)
+    from PIL import ImageEnhance
+    recorte = ImageEnhance.Color(recorte).enhance(0.25)
+    recorte = ImageEnhance.Brightness(recorte).enhance(1.08)
+    RUTA_MAPA_BASE.parent.mkdir(parents=True, exist_ok=True)
+    recorte.save(RUTA_MAPA_BASE)
+    return RUTA_MAPA_BASE
+
+
+def _separar_burbujas(posiciones, radios, lado, max_desp=9.0, iteraciones=40):
+    """Aleja un poco las burbujas que se traslapan para que se lea el número de
+    cada una (desplazamiento máximo `max_desp` pt respecto a su ubicación real)."""
+    import math
+    orig = dict(posiciones)
+    pos = dict(posiciones)
+    claves = [e for e in pos if radios[e] > 3]
+    for _ in range(iteraciones):
+        for i, a in enumerate(claves):
+            for b in claves[i + 1:]:
+                dx, dy = pos[b][0] - pos[a][0], pos[b][1] - pos[a][1]
+                dist = math.hypot(dx, dy) or 0.01
+                minimo = 0.9 * (radios[a] + radios[b])
+                if dist < minimo:
+                    empuje = (minimo - dist) / 2
+                    ux, uy = dx / dist, dy / dist
+                    pos[a] = (pos[a][0] - ux * empuje, pos[a][1] - uy * empuje)
+                    pos[b] = (pos[b][0] + ux * empuje, pos[b][1] + uy * empuje)
+        for e in claves:
+            ox_, oy_ = orig[e]
+            dx, dy = pos[e][0] - ox_, pos[e][1] - oy_
+            n = math.hypot(dx, dy)
+            if n > max_desp:
+                pos[e] = (ox_ + dx / n * max_desp, oy_ + dy / n * max_desp)
+            radio = radios[e]
+            pos[e] = (min(max(pos[e][0], radio), lado - radio), min(max(pos[e][1], radio), lado - radio))
+    return pos
+
+
+def _mosaico_mapas_dias(mapas, orden_anios, n_cols=3):
+    """Mosaico de mapas (uno por año) sobre un mapa base de calles: una burbuja
+    por estación, con radio creciente con los días Buena/Aceptable y escala
+    común a todos los paneles."""
+    from reportlab.graphics.shapes import Image as DibujoImagen
+    n_rows = -(-len(orden_anios) // n_cols)
+    gap_x, gap_y = 8, 10
+    panel_w = (CONTENT_WIDTH - (n_cols - 1) * gap_x) / n_cols
+    titulo_h = 15
+    panel_h = panel_w + titulo_h
+
+    ruta_base = _asegurar_mapa_base()
+    x0, y0, lado = _extension_mapa()
+
+    def pos(est):
+        px, py = _mercator_px(*COORDENADAS_ESTACIONES[est])
+        return (px - x0) / lado * panel_w, (1 - (py - y0) / lado) * panel_w
+
+    valores = [v["dias"] for m in mapas.values() for v in m.values() if v["dias"] > 0]
+    vmax = max(valores) if valores else 1
+    r_min, r_max = 8.0, 17.0
+
+    alto_total = n_rows * panel_h + (n_rows - 1) * gap_y
+    d = Drawing(CONTENT_WIDTH, alto_total)
+
+    for idx, anio_i in enumerate(orden_anios):
+        fila, col = divmod(idx, n_cols)
+        ox = col * (panel_w + gap_x)
+        oy = alto_total - (fila + 1) * panel_h - fila * gap_y
+
+        if ruta_base is not None:
+            d.add(DibujoImagen(ox, oy, panel_w, panel_w, str(ruta_base)))
+        else:
+            d.add(Rect(ox, oy, panel_w, panel_w, fillColor=colors.HexColor("#F4F7F8"), strokeColor=None))
+        d.add(Rect(ox, oy, panel_w, panel_w, fillColor=None, strokeColor=colors.HexColor("#B7C2C7"), strokeWidth=0.6))
+        d.add(Rect(ox, oy + panel_w, panel_w, titulo_h, fillColor=NAVY, strokeColor=NAVY))
+        d.add(String(ox + 8, oy + panel_w + 4.5, str(anio_i), fontName="Montserrat-Bold",
+                     fontSize=9.5, fillColor=colors.white))
+
+        datos_anio = mapas.get(anio_i)
+        if datos_anio is None:
+            continue
+
+        estaciones = sorted(datos_anio, key=lambda e: -datos_anio[e]["dias"])
+        radios = {
+            e: (r_min + (r_max - r_min) * (datos_anio[e]["dias"] / vmax) ** 0.9) if datos_anio[e]["dias"] > 0 else 2.6
+            for e in estaciones
+        }
+        posiciones = _separar_burbujas({e: pos(e) for e in estaciones}, radios, panel_w)
+
+        for est in estaciones:
+            info = datos_anio[est]
+            x, y = posiciones[est]
+            if info["dias"] == 0:
+                d.add(Circle(ox + x, oy + y, 2.6, fillColor=colors.HexColor("#8A9BA3"), strokeColor=colors.white, strokeWidth=0.5))
+                d.add(String(ox + x + 4, oy + y - 1.8, est, fontName="Montserrat-Bold",
+                             fontSize=5.4, fillColor=colors.HexColor("#5E7079")))
+                continue
+            c = Circle(ox + x, oy + y, radios[est], fillColor=COLOR_BURBUJA, strokeColor=colors.white, strokeWidth=0.7)
+            c.fillOpacity = 0.78
+            if not info["suficiente"]:
+                c.fillOpacity = 0.5
+                c.strokeColor = NAVY
+                c.strokeWidth = 0.9
+                c.strokeDashArray = [2.2, 1.6]
+            d.add(c)
+            d.add(String(ox + x, oy + y + 0.8, est, fontName="Montserrat-Bold",
+                         fontSize=5.4, fillColor=colors.white, textAnchor="middle"))
+            d.add(String(ox + x, oy + y - 6, str(info["dias"]), fontName="Montserrat-Bold",
+                         fontSize=6.6, fillColor=colors.white, textAnchor="middle"))
+
+    return d
+
+
+def _leyenda_mapa_dias():
+    fuente, tam = "Montserrat", 8.2
+    d = Drawing(CONTENT_WIDTH, 26)
+    d.add(String(0, 0, "Mapa base: © colaboradores de OpenStreetMap", fontName="Montserrat",
+                 fontSize=6.6, fillColor=MUTED))
+
+    x = 0.0
+    c1 = Circle(x + 6, 19, 5, fillColor=COLOR_BURBUJA, strokeColor=None)
+    c1.fillOpacity = 0.78
+    d.add(c1)
+    t1 = "Tamaño = días Buena o Aceptable"
+    d.add(String(x + 15, 16, t1, fontName=fuente, fontSize=tam, fillColor=TEXT))
+    x += 15 + pdfmetrics.stringWidth(t1, fuente, tam) + 16
+
+    c2 = Circle(x + 6, 19, 5, fillColor=COLOR_BURBUJA, strokeColor=NAVY, strokeWidth=0.9)
+    c2.fillOpacity = 0.5
+    c2.strokeDashArray = [2.2, 1.6]
+    d.add(c2)
+    t2 = "Menos del 75 % de días con dato"
+    d.add(String(x + 15, 16, t2, fontName=fuente, fontSize=tam, fillColor=TEXT))
+    x += 15 + pdfmetrics.stringWidth(t2, fuente, tam) + 16
+
+    d.add(Circle(x + 4, 19, 2.6, fillColor=colors.HexColor("#8A9BA3"), strokeColor=None))
+    d.add(String(x + 12, 16, "Sin datos", fontName=fuente, fontSize=tam, fillColor=TEXT))
     return d
 
 
@@ -1355,7 +1942,9 @@ def generar_informe(anio, salida=None):
     story += _seccion_evaluacion_nom(estilos, datos)
     story += _seccion_panorama_general(anio, estilos, datos)
     story += _seccion_horas_categoria(anio, estilos, datos)
+    story += _seccion_mapa_dias_estaciones(anio, estilos, datos)
     story += _seccion_cumplimiento_nom(anio, estilos, datos)
+    story += _seccion_monoxido_carbono(anio, estilos, datos)
 
     dibujar_portada = _dibujar_portada(anio, datos)
     pintar_fondo = _fondo_pagina(anio)

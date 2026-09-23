@@ -376,6 +376,18 @@ def calcular_frecuencia_horaria_global(dfh, estaciones=EST_ORDER_BASE):
     return g_all.sort_values(["STATION", "CATEGORIA"])
 
 
+def agregar_amg_horario(dfh, estaciones=EST_ORDER_BASE):
+    """Agrega la estación virtual AMG a nivel horario: para cada hora y cada
+    columna de COL_VALOR_HORARIO_GLOBAL toma el máximo entre estaciones (igual
+    que rebuild_amg_from_daily lo hace por día) y clasifica con el mismo IAS
+    global. Devuelve dfh con las filas extra STATION == "AMG"."""
+    cols = [c for c in COL_VALOR_HORARIO_GLOBAL.values() if c in dfh.columns]
+    amg = dfh[dfh["STATION"].isin(estaciones)].groupby("DATE")[cols].max().reset_index()
+    amg["STATION"] = "AMG"
+    amg = calcular_ias_global_horario(amg)
+    return pd.concat([dfh, amg[["STATION", "DATE", "IAS_GLOBAL_CAT"]]], ignore_index=True)
+
+
 def resumen_horas_categoria(dfh, estaciones=EST_ORDER_BASE):
     """Convierte calcular_frecuencia_horaria_global() en el formato que
     guarda resumen_historico.json: {estacion: {categoria: %}}."""
@@ -386,6 +398,68 @@ def resumen_horas_categoria(dfh, estaciones=EST_ORDER_BASE):
         salida[est] = {
             str(cat): round(float(pct), 2)
             for cat, pct in zip(fila_est["CATEGORIA"], fila_est["PORCENTAJE"])
+        }
+    return salida
+
+
+def calcular_violines_mensuales(dfh, columna, suavizado=None, estaciones=EST_ORDER_BASE, minimo_horas=0.75):
+    """Estadísticos por mes para la gráfica de violines del AMG (sección
+    "Gráfica de violín por mes" del notebook). Un mes solo cuenta si tiene
+    >= 75 % de sus horas con dato; si no, es D.I. Por mes: caja (Q1, mediana,
+    Q3, bigotes a 1.5 IQR, atípicos), media y densidad kernel gaussiana
+    (bandwidth de Scott, como matplotlib) normalizada a máximo 1.
+    Regresa {mes: {...}} en la unidad original."""
+    # AMG = máximo horario entre estaciones de la columna original; el promedio
+    # móvil (p. ej. 8 h en CO) se calcula sobre esa serie del AMG, como en el
+    # notebook (la columna CO_8H de la estación AMG).
+    serie = dfh[dfh["STATION"].isin(estaciones)].groupby("DATE")[columna].max()
+    if suavizado is not None:
+        serie = suavizado(serie)
+    salida = {}
+    for mes in range(1, 13):
+        del_mes = serie[serie.index.month == mes]
+        dias = calendar.monthrange(int(serie.index.year[0]), mes)[1]
+        vals = del_mes.dropna().to_numpy(dtype=float)
+        if vals.size < minimo_horas * dias * 24 or vals.size < 3:
+            salida[str(mes)] = {"valido": False}
+            continue
+        q1, med, q3 = (float(x) for x in np.percentile(vals, [25, 50, 75]))
+        iqr = q3 - q1
+        dentro = vals[(vals >= q1 - 1.5 * iqr) & (vals <= q3 + 1.5 * iqr)]
+        atipicos = vals[(vals < q1 - 1.5 * iqr) | (vals > q3 + 1.5 * iqr)]
+        bw = float(np.std(vals, ddof=1)) * vals.size ** (-1 / 5) or 1e-6
+        grid = np.linspace(vals.min(), vals.max(), 60)
+        dens = np.exp(-0.5 * ((grid[:, None] - vals[None, :]) / bw) ** 2).mean(axis=1)
+        dens = dens / dens.max()
+        salida[str(mes)] = {
+            "valido": True, "n": int(vals.size), "media": round(float(vals.mean()), 4),
+            "q1": round(q1, 4), "mediana": round(med, 4), "q3": round(q3, 4),
+            "bigote_inf": round(float(dentro.min()), 4), "bigote_sup": round(float(dentro.max()), 4),
+            "atipicos": [round(float(v), 3) for v in np.sort(atipicos)],
+            "kde_x": [round(float(v), 4) for v in grid], "kde_y": [round(float(v), 3) for v in dens],
+        }
+    return salida
+
+
+def calcular_perfil_horario(dfh, contaminante, estaciones=EST_ORDER_BASE, min_obs_por_hora=6):
+    """Perfil diurno del AMG para un contaminante (sección 4.4 del notebook):
+    AMG = máximo horario entre estaciones; luego promedio por (mes, hora del
+    día), exigiendo al menos `min_obs_por_hora` días con dato.
+    Regresa {mes: {hora: promedio}} en la unidad original de la base."""
+    dfh = dfh[dfh["STATION"].isin(estaciones)]
+    amg = dfh.groupby("DATE")[contaminante].max().reset_index()
+    amg["MES"] = amg["DATE"].dt.month
+    amg["HORA"] = amg["DATE"].dt.hour
+    perfil = (amg.groupby(["MES", "HORA"])[contaminante]
+              .agg(MEAN="mean", N="count").reset_index())
+    perfil.loc[perfil["N"] < min_obs_por_hora, "MEAN"] = np.nan
+
+    salida = {}
+    for mes in range(1, 13):
+        fila_mes = perfil[perfil["MES"] == mes].sort_values("HORA")
+        salida[str(mes)] = {
+            str(int(h)): (round(float(v), 4) if pd.notna(v) else None)
+            for h, v in zip(fila_mes["HORA"], fila_mes["MEAN"])
         }
     return salida
 
@@ -578,6 +652,47 @@ def annual_compiled_by_station(dfd):
     return pd.DataFrame(rows).sort_values(["STATION", "ANIO"]).reset_index(drop=True)
 
 
+def dias_buena_aceptable_por_estacion(res_comp_est, anio, estaciones=EST_ORDER_BASE):
+    """Días con IAS Buena + Aceptable por estación (sin la virtual AMG), para
+    el mapa de burbujas. Una estación es "suficiente" si tiene al menos
+    suf_min_yearly(anio) días clasificados (75% del año), igual que el filtro
+    exclude_sin_suf_anual de tu notebook."""
+    salida = {}
+    for est in estaciones:
+        fila = res_comp_est[(res_comp_est["STATION"] == est) & (res_comp_est["ANIO"] == anio)]
+        if fila.empty:
+            salida[est] = {"dias": 0, "validos": 0, "suficiente": False}
+            continue
+        f = fila.iloc[0]
+        validos = int(f["DIAS_IAS_BUENA"] + f["DIAS_IAS_ACEPTABLE"] + f["DIAS_IAS_MALA"]
+                      + f["DIAS_IAS_MUY_MALA"] + f["DIAS_IAS_EXTREMADAMENTE_MALA"])
+        salida[est] = {
+            "dias": int(f["DIAS_IAS_BUENA"] + f["DIAS_IAS_ACEPTABLE"]),
+            "validos": validos,
+            "suficiente": validos >= suf_min_yearly(anio),
+        }
+    return salida
+
+
+def dias_buena_aceptable_por_estacion_contaminante(dfd_all, anio, contaminante, estaciones=EST_ORDER_BASE):
+    """Como dias_buena_aceptable_por_estacion, pero con la categoría IAS diaria
+    de UN solo contaminante (columna IAS_{contaminante}_CAT_DIA; CO usa el
+    máximo diario del promedio móvil de 8 h). "validos" = días con categoría."""
+    col = f"IAS_{contaminante}_CAT_DIA"
+    dfd = dfd_all.copy()
+    dfd = dfd[pd.to_datetime(dfd["FECHA"]).dt.year == anio]
+    salida = {}
+    for est in estaciones:
+        cats = dfd.loc[dfd["STATION"] == est, col].dropna() if col in dfd.columns else pd.Series(dtype=object)
+        validos = int(len(cats))
+        salida[est] = {
+            "dias": int(cats.isin(["Buena", "Aceptable"]).sum()),
+            "validos": validos,
+            "suficiente": validos >= suf_min_yearly(anio),
+        }
+    return salida
+
+
 def suf_min_yearly(anio):
     """75% de suficiencia anual: 274 días en año común, 275 en bisiesto."""
     return 275 if calendar.isleap(anio) else 274
@@ -681,10 +796,14 @@ def calcular_resumen_anual(ruta_excel, estacion="AMG"):
     fila = fila.iloc[0]
 
     dias_buena_aceptable = int(fila["DIAS_IAS_BUENA"] + fila["DIAS_IAS_ACEPTABLE"])
+    dias_estaciones = dias_buena_aceptable_por_estacion(res_comp_est, anio)
+    dias_estaciones_contaminante = {"CO": dias_buena_aceptable_por_estacion_contaminante(dfd_all, anio, "CO")}
 
     dfh = calcular_columnas_horarias_gases(dfh)
     dfh = calcular_ias_global_horario(dfh)
-    horas_categoria = resumen_horas_categoria(dfh)
+    horas_categoria = resumen_horas_categoria(agregar_amg_horario(dfh), estaciones=EST_ORDER_BASE + ["AMG"])
+    violines_mensuales = {"CO": calcular_violines_mensuales(dfh, "CO", suavizado=rolling_8h)}
+    perfil_horario = {pol: calcular_perfil_horario(dfh, pol) for pol in ["PM10", "PM2.5", "O3", "NO2", "SO2", "CO"]}
 
     cumplimiento_nom = resumen_cumplimiento_nom(dfd, anio)
 
@@ -693,6 +812,10 @@ def calcular_resumen_anual(ruta_excel, estacion="AMG"):
         "dias_buena_aceptable": dias_buena_aceptable,
         "horas_categoria_calidad": horas_categoria,
         "cumplimiento_nom": cumplimiento_nom,
+        "perfil_horario": perfil_horario,
+        "violines_mensuales": violines_mensuales,
+        "dias_buena_aceptable_estaciones": dias_estaciones,
+        "dias_buena_aceptable_estaciones_contaminante": dias_estaciones_contaminante,
     }
 
 
@@ -712,6 +835,10 @@ def actualizar_historico(anio, url_o_id=None, ruta_excel=None, ruta_resumen=RUTA
     entrada["dias_buena_aceptable"] = resultado["dias_buena_aceptable"]
     entrada["horas_categoria_calidad"] = resultado["horas_categoria_calidad"]
     entrada["cumplimiento_nom"] = resultado["cumplimiento_nom"]
+    entrada["perfil_horario"] = resultado["perfil_horario"]
+    entrada["violines_mensuales"] = resultado["violines_mensuales"]
+    entrada["dias_buena_aceptable_estaciones"] = resultado["dias_buena_aceptable_estaciones"]
+    entrada["dias_buena_aceptable_estaciones_contaminante"] = resultado["dias_buena_aceptable_estaciones_contaminante"]
     historico[str(anio)] = entrada
 
     ruta_resumen.parent.mkdir(parents=True, exist_ok=True)
