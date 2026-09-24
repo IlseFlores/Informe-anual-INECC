@@ -441,7 +441,7 @@ def calcular_violines_mensuales(dfh, columna, suavizado=None, estaciones=EST_ORD
     return salida
 
 
-def calcular_perfil_horario(dfh, contaminante, estaciones=EST_ORDER_BASE, min_obs_por_hora=6):
+def calcular_perfil_horario(dfh, contaminante, estaciones=EST_ORDER_BASE, min_obs_por_hora=6, cobertura_mensual=0.75):
     """Perfil diurno del AMG para un contaminante (sección 4.4 del notebook):
     AMG = máximo horario entre estaciones; luego promedio por (mes, hora del
     día), exigiendo al menos `min_obs_por_hora` días con dato.
@@ -453,6 +453,15 @@ def calcular_perfil_horario(dfh, contaminante, estaciones=EST_ORDER_BASE, min_ob
     perfil = (amg.groupby(["MES", "HORA"])[contaminante]
               .agg(MEAN="mean", N="count").reset_index())
     perfil.loc[perfil["N"] < min_obs_por_hora, "MEAN"] = np.nan
+
+    # Un mes solo se grafica si el AMG tiene dato en >= 75 % de sus horas
+    # (igual que en los violines); si no, el mes queda como D.I.
+    anio = int(amg["DATE"].dt.year.iloc[0])
+    for mes in range(1, 13):
+        horas_mes = calendar.monthrange(anio, mes)[1] * 24
+        con_dato = int(amg.loc[amg["MES"] == mes, contaminante].notna().sum())
+        if con_dato < cobertura_mensual * horas_mes:
+            perfil.loc[perfil["MES"] == mes, "MEAN"] = np.nan
 
     salida = {}
     for mes in range(1, 13):
@@ -797,12 +806,27 @@ def calcular_resumen_anual(ruta_excel, estacion="AMG"):
 
     dias_buena_aceptable = int(fila["DIAS_IAS_BUENA"] + fila["DIAS_IAS_ACEPTABLE"])
     dias_estaciones = dias_buena_aceptable_por_estacion(res_comp_est, anio)
-    dias_estaciones_contaminante = {"CO": dias_buena_aceptable_por_estacion_contaminante(dfd_all, anio, "CO")}
+    dias_estaciones_contaminante = {
+        pol: dias_buena_aceptable_por_estacion_contaminante(dfd_all, anio, pol) for pol in ("CO", "NO2", "SO2", "O3", "PM10", "PM2.5")
+    }
 
     dfh = calcular_columnas_horarias_gases(dfh)
     dfh = calcular_ias_global_horario(dfh)
     horas_categoria = resumen_horas_categoria(agregar_amg_horario(dfh), estaciones=EST_ORDER_BASE + ["AMG"])
-    violines_mensuales = {"CO": calcular_violines_mensuales(dfh, "CO", suavizado=rolling_8h)}
+    violines_mensuales = {
+        "CO": calcular_violines_mensuales(dfh, "CO", suavizado=rolling_8h),
+        "NO2": calcular_violines_mensuales(dfh, "NO2"),
+        "O3": calcular_violines_mensuales(dfh, "O3", suavizado=rolling_8h),
+        # PM10: NowCast (promedio ponderado de 12 h) calculado sobre la serie del AMG
+        "PM10": calcular_violines_mensuales(
+            dfh, "PM10",
+            suavizado=lambda s: pd.to_numeric(serie_nowcast_por_estacion(s.to_frame("PM10"), "PM10", 0), errors="coerce"),
+        ),
+        "PM2.5": calcular_violines_mensuales(
+            dfh, "PM2.5",
+            suavizado=lambda s: pd.to_numeric(serie_nowcast_por_estacion(s.to_frame("PM2.5"), "PM2.5", 1), errors="coerce"),
+        ),
+    }
     perfil_horario = {pol: calcular_perfil_horario(dfh, pol) for pol in ["PM10", "PM2.5", "O3", "NO2", "SO2", "CO"]}
 
     cumplimiento_nom = resumen_cumplimiento_nom(dfd, anio)

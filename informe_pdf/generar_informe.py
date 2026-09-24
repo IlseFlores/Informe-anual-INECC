@@ -94,6 +94,7 @@ COORDENADAS_ESTACIONES = {
 COLOR_BURBUJA = colors.HexColor("#2E9E3B")
 
 # Figura 5 (perfil horario anual, una sola línea encadenada por mes).
+MESES_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
 MES_LABELS_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
 # Colores de las categorías IAS (mismos que en categorias_ias, para Tabla 4)
@@ -691,8 +692,47 @@ def _seccion_panorama_general(anio, estilos, datos):
         ),
         _grafica_dias_buena_aceptable(serie),
     ]))
+    story.append(Spacer(1, 6))
+    story.append(Paragraph(_texto_analisis_panorama(serie), estilos["cuerpo"]))
 
     return story
+
+
+def _texto_analisis_panorama(serie):
+    """Análisis breve de la Figura 2: mejores y peores años del periodo y los
+    antecedentes que pueden explicarlos (pandemia de COVID-19). Los años y las
+    cifras salen de 'serie'; los antecedentes solo se mencionan cuando esos
+    años están entre los extremos."""
+    por_valor = sorted(serie, key=lambda t: -t[1])
+    mejores, peores = por_valor[:2], sorted(por_valor[-2:], key=lambda t: t[1])
+    anios_mejores = {a for a, _ in mejores}
+    anios_peores = {a for a, _ in peores}
+
+    txt = (
+        f"Los años con más días de calidad Buena o Aceptable en el AMG fueron {mejores[0][0]} "
+        f"({mejores[0][1]} días) y {mejores[1][0]} ({mejores[1][1]} días), mientras que los valores más bajos "
+        f"se registraron en {peores[0][0]} ({peores[0][1]} días) y {peores[1][0]} ({peores[1][1]} días)."
+    )
+    if anios_mejores & {2020, 2021}:
+        txt += (
+            " Los años de mayor número de días coinciden con la pandemia por COVID-19: a partir de marzo de "
+            "2020 las medidas de confinamiento redujeron la movilidad y la actividad económica y, con ello, "
+            "las emisiones de contaminantes, un efecto observado en numerosas ciudades del mundo y que se "
+            "prolongó de forma parcial durante 2021."
+        )
+    contraste = []
+    if 2019 in anios_peores:
+        contraste.append("2019 es un año previo a la pandemia, con actividad normal")
+    if 2023 in anios_peores:
+        contraste.append("2023 corresponde a la recuperación de la movilidad y de la actividad económica tras la pandemia")
+    if contraste:
+        txt += " En contraste, " + " y ".join(contraste) + "."
+    txt += (
+        " Estos antecedentes ayudan a interpretar el comportamiento, pero no equivalen a una atribución "
+        "causal: la variación entre años también depende de condiciones meteorológicas como la lluvia, el "
+        "viento y la temperatura, y de eventos como los incendios forestales."
+    )
+    return txt
 
 
 def _texto_panorama_general(anio, serie):
@@ -902,6 +942,10 @@ def _grafica_horas_categoria(datos_estacion, orden_estaciones=ORDEN_ESTACIONES_H
             ancho_seg = barra_w * pct / 100
             d.add(Rect(x, y, ancho_seg, fila_h, fillColor=COLOR_CATEGORIA_IAS[cat],
                       strokeColor=colors.white, strokeWidth=0.6))
+            if ancho_seg >= 22:  # solo se rotula si el segmento es lo bastante ancho
+                color_txt = NAVY if cat in ("Aceptable", "D.I.") else colors.white
+                d.add(String(x + ancho_seg / 2, y + fila_h / 2 - 2.6, f"{pct:.0f} %", fontName="Montserrat-Bold",
+                             fontSize=6.6, fillColor=color_txt, textAnchor="middle"))
             x += ancho_seg
 
     return d
@@ -930,7 +974,7 @@ def _leyenda_categorias_ias():
 
 
 def _seccion_monoxido_carbono(anio, estilos, datos):
-    story = [PageBreak(), Paragraph("Monóxido de carbono", estilos["h2"])]
+    story = [PageBreak(), Paragraph("Monóxido de carbono (CO)", estilos["h2"])]
 
     story.append(Paragraph(
         "El monóxido de carbono es un gas incoloro e inodoro, que se forma de manera natural en la atmósfera "
@@ -953,11 +997,23 @@ def _seccion_monoxido_carbono(anio, estilos, datos):
         "respiratorias como asma, bronquitis y neumonía (Secretaría de Salud NOM-021-SSA1-1993, 2020).",
         estilos["cuerpo"],
     ))
+    story.append(_esquema_co())
 
-    story += _seccion_perfil_horario_mensual(anio, estilos, datos, "CO", "CO", "ppm", "Figura 5")
+    story += _seccion_perfil_horario_mensual(
+        anio, estilos, datos, "CO", "CO", "ppm", "Figura 5",
+        texto=(
+            "En el AMG, el CO no excede los límites de la NOM, con el número de días de buena, regular o mala "
+            "calidad del aire. Asimismo, se observa la distribución horaria del CO por año para el AMG, donde "
+            "se observa una mayor concentración en las primeras horas del día y a finales del día, coincidente "
+            "con la actividad de movilidad que suele llevarse en la ciudad. En la Figura 5 se muestra una mayor "
+            "concentración durante los meses de noviembre, diciembre, enero y febrero, coincidente con las festividades."
+        ),
+    )
     story += _seccion_violines_mensuales(
         anio, estilos, datos, "CO", "CO", "ppm", "Figura 6",
-        serie="promedio móvil de 8 horas", limite=9.0, texto_limite="límite de la NOM-021-SSA1 (9 ppm en 8 horas)",
+        serie="promedio móvil de 8 horas",
+        limites=[dict(valor=9.0, color=AZUL_SEMADET, dash=[3, 2], etiqueta="Límite 8 h (NOM)",
+                      texto="límite de la NOM-021-SSA1 (9 ppm en 8 horas)")],
     )
     story += _seccion_mapa_dias_estaciones(
         anio, estilos, datos, contaminante="CO", nombre="CO", numero_figura="Figura 7",
@@ -966,17 +1022,433 @@ def _seccion_monoxido_carbono(anio, estilos, datos):
     return story
 
 
-def _seccion_perfil_horario_mensual(anio, estilos, datos, contaminante, nombre, unidad, numero_figura):
+def _esquema_molecula(atomo_central, simbolo, satelites, ancho=200, alto=150, etiqueta_satelites="Oxígeno"):
+    """Esquema de una molécula con círculos (átomo central grande y átomos de
+    oxígeno traslapados). 'satelites' = [(dx, dy, radio)] respecto al centro;
+    el dibujo se centra en la caja y se rotula con la tipografía del informe."""
+    R = 42
+    cajas = [(-R, -R, R, R)] + [(dx - r, dy - r, dx + r, dy + r) for dx, dy, r in satelites]
+    x0, y0 = min(c[0] for c in cajas), min(c[1] for c in cajas)
+    x1, y1 = max(c[2] for c in cajas), max(c[3] for c in cajas)
+    cx = ancho / 2 - (x0 + x1) / 2
+    cy = alto / 2 - (y0 + y1) / 2
+
+    d = Drawing(ancho, alto)
+    d.hAlign = "CENTER"
+    trazo = colors.black
+    d.add(Circle(cx, cy, R, fillColor=colors.white, strokeColor=trazo, strokeWidth=1.3))
+    if simbolo:
+        d.add(String(cx, cy + 2, atomo_central, fontName="Montserrat-Bold", fontSize=10.5, fillColor=colors.black, textAnchor="middle"))
+        d.add(String(cx, cy - 11, f"({simbolo})", fontName="Montserrat-Bold", fontSize=10.5, fillColor=colors.black, textAnchor="middle"))
+    else:
+        d.add(String(cx, cy - 4.5, atomo_central, fontName="Montserrat-Bold", fontSize=15, fillColor=colors.black, textAnchor="middle"))
+    for dx, dy, r in satelites:
+        d.add(Circle(cx + dx, cy + dy, r, fillColor=colors.white, strokeColor=trazo, strokeWidth=1.3))
+        if etiqueta_satelites:
+            d.add(String(cx + dx, cy + dy - 2.5, etiqueta_satelites, fontName="Montserrat", fontSize=7.4, fillColor=colors.black, textAnchor="middle"))
+    return d
+
+
+def _esquema_no2():
+    return _esquema_molecula("Nitrógeno", "N", [(15.5, 52.7, 25), (-15.5, -47.7, 20)], alto=160)
+
+
+def _esquema_o3():
+    d = _esquema_molecula("O₃", None, [(34, 42, 28), (-34, -39, 21)], alto=134, etiqueta_satelites="")
+    d.scale(0.62, 0.62)  # más chico para que quepa en la misma página que el texto
+    d.width, d.height = d.width * 0.62, d.height * 0.62
+    return d
+
+
+def _esquema_so2():
+    return _esquema_molecula("Azufre", "S", [(-39, 46, 21), (34, -39, 20)], alto=150)
+
+
+def _esquema_co():
+    return _esquema_molecula("Carbono", "C", [(46.5, -37, 23)], alto=120)
+
+
+def _seccion_dioxido_nitrogeno(anio, estilos, datos):
+    story = [PageBreak(), Paragraph("Dióxido de nitrógeno (NO₂)", estilos["h2"])]
+    story.append(Paragraph(
+        "El dióxido de nitrógeno (NO₂) es un gas de color marrón-rojizo y olor fuerte que forma parte del "
+        "grupo de los óxidos de nitrógeno (NOx). Se genera principalmente por la combustión de combustibles "
+        "fósiles, en especial por el tráfico vehicular, procesos industriales y la generación de energía. "
+        "También puede formarse en reacciones atmosféricas a partir de otros compuestos nitrogenados.",
+        estilos["cuerpo"],
+    ))
+    story.append(Paragraph(
+        "La exposición a NO₂ puede irritar las vías respiratorias, reducir la función pulmonar y aumentar la "
+        "sensibilidad a infecciones respiratorias. En personas asmáticas puede detonar crisis más severas y "
+        "frecuentes, y en exposición crónica se asocia a enfermedades respiratorias permanentes.",
+        estilos["cuerpo"],
+    ))
+    story.append(Paragraph(
+        "En el ambiente, el NO₂ contribuye a la formación de ozono troposférico y material particulado "
+        "secundario, además de acidificar suelos y cuerpos de agua. También daña hojas y tejidos vegetales, "
+        "lo que impacta la salud de ecosistemas y la productividad agrícola.",
+        estilos["cuerpo"],
+    ))
+    story.append(Spacer(1, 4))
+    story.append(_esquema_no2())
+    story += _seccion_perfil_horario_mensual(
+        anio, estilos, datos, "NO2", "NO₂", "ppm", "Figura 8",
+        texto=_texto_perfil_no2(anio, (datos.get("perfil_horario") or {}).get("NO2")),
+    )
+    story += _seccion_violines_mensuales(
+        anio, estilos, datos, "NO2", "NO₂", "ppm", "Figura 9", serie="valor horario",
+        limites=[
+            dict(valor=0.106, color=NARANJA_SEMADET, dash=[3, 2], etiqueta="Límite 1 h (NOM)",
+                 texto="límite horario de la NOM (0.106 ppm)"),
+            dict(valor=0.021, color=GRIS_SEMADET, dash=None, etiqueta="Límite anual (NOM)",
+                 texto="límite anual de la NOM (0.021 ppm)"),
+        ],
+        decimales=3, con_resultados=True,
+        nota_final=(
+            "Como el registro cubre menos del 75 % de los días del año, estas comparaciones son solo de "
+            "referencia y el cumplimiento de la NOM no se evalúa para este contaminante (D.I. en la Tabla 5)."
+        ),
+    )
+    story += _seccion_mapa_dias_estaciones(
+        anio, estilos, datos, contaminante="NO2", nombre="NO₂", numero_figura="Figura 10",
+        nivel_titulo="h3", serie="máximo horario del día",
+    )
+    return story
+
+
+def _texto_perfil_horario(anio, perfil, nombre, unidad, numero_figura, decimales=3, frase_patron="",
+                          limite=None, texto_limite="", nota_datos=""):
+    """Descripción de una figura de perfil horario mensual calculada del perfil
+    {mes: {hora: valor}}: meses con dato suficiente, horas de mayor y menor
+    concentración, mes más alto y, opcionalmente, el valor máximo frente a un
+    límite de la NOM. `frase_patron` es la interpretación del patrón horario."""
+    if not perfil:
+        return ""
+    validos = [m for m in range(1, 13) if any(v is not None for v in perfil.get(str(m), {}).values())]
+    if not validos:
+        return (f"En {anio} no se cuenta con mediciones de {nombre} suficientes para construir el perfil horario "
+                "mensual del AMG.")
+    if len(validos) > 1 and validos == list(range(validos[0], validos[-1] + 1)):
+        rango = f"el periodo de {MESES_ES[validos[0] - 1]} a {MESES_ES[validos[-1] - 1]}"
+    else:
+        rango = "los meses de " + ", ".join(MESES_ES[m - 1] for m in validos)
+    faltan = [m for m in range(1, 13) if m not in validos]
+    f = f".{decimales}f"
+
+    por_hora = {h: [perfil[str(m)][str(h)] for m in validos if perfil[str(m)].get(str(h)) is not None] for h in range(24)}
+    prom_hora = {h: sum(v) / len(v) for h, v in por_hora.items() if v}
+    h_max, h_min = max(prom_hora, key=prom_hora.get), min(prom_hora, key=prom_hora.get)
+    prom_mes = {m: sum(x for x in perfil[str(m)].values() if x is not None) / 24 for m in validos}
+    m_max = max(prom_mes, key=prom_mes.get)
+
+    txt = (
+        f"Para cada hora del año se toma la concentración máxima de {nombre} entre las estaciones de la red, que "
+        "representa al AMG, y se promedia por hora del día dentro de cada mes (se exigen al menos 6 días con "
+        "dato por hora y que el AMG tenga dato en al menos 75 % de las horas del mes). "
+    )
+    if faltan:
+        txt += (
+            f"La {numero_figura} incluye únicamente {rango}; los meses restantes se indican como D.I. "
+            "(datos insuficientes). "
+        )
+        if nota_datos:
+            txt += nota_datos + " "
+    txt += (
+        f"En los meses con dato, la concentración promedio es mayor hacia las {h_max} h y menor hacia las {h_min} h"
+        + (f", {frase_patron}" if frase_patron else "")
+        + f". El mes con la concentración promedio más alta fue {MESES_ES[m_max - 1]} "
+        f"({prom_mes[m_max]:{f}} {unidad})."
+    )
+    if limite is not None:
+        pico = max((perfil[str(m)][str(h)], m, int(h)) for m in validos for h in perfil[str(m)] if perfil[str(m)][h] is not None)
+        if pico[0] > limite:
+            txt += (
+                f" El promedio horario más alto del AMG, {pico[0]:{f}} {unidad} en {MESES_ES[pico[1] - 1]} a las "
+                f"{pico[2]} h (valor sin el suavizado visual de la figura), ya rebasa el {texto_limite}."
+            )
+        else:
+            txt += (
+                f" El promedio horario más alto del AMG, {pico[0]:{f}} {unidad} en {MESES_ES[pico[1] - 1]} a las "
+                f"{pico[2]} h (valor sin el suavizado visual de la figura), se mantiene por debajo del {texto_limite}."
+            )
+    return txt
+
+
+def _texto_perfil_no2(anio, perfil):
+    return _texto_perfil_horario(
+        anio, perfil, "NO₂", "ppm", "Figura 8",
+        frase_patron="un patrón consistente con la actividad vehicular de la ciudad, principal fuente de este contaminante",
+        nota_datos=(f"Las estaciones de la red iniciaron el registro de NO₂ hasta la segunda mitad de {anio}. "
+                    "Como el registro cubre menos del 75 % de los días del año, el cumplimiento de la NOM no se "
+                    f"evalúa para este contaminante en {anio} (D.I. en la Tabla 5)."),
+    )
+
+
+def _seccion_particulas_suspendidas(anio, estilos, datos):
+    from reportlab.platypus import Image as FlowImage
+    story = [PageBreak(), Paragraph("Partículas suspendidas", estilos["h2"])]
+    story.append(Paragraph(
+        "Las partículas suspendidas son partículas sólidas o líquidas microscópicas que se encuentran en el "
+        "aire, estas flotan en diversas áreas, estas provienen de fuentes naturales como el polvo o el polen y "
+        "por fuentes antropogénicas como los vehículos y las actividades de las industrias.",
+        estilos["cuerpo"],
+    ))
+    story.append(Paragraph(
+        "Estas se originan debido a la desintegración de fragmentos de materia.",
+        estilos["cuerpo"],
+    ))
+    story.append(Paragraph(
+        "Este tipo de partículas se clasifican por su tamaño: las gruesas (PM₁₀), las finas (PM₂.₅) y las "
+        "ultrafinas (PM₀.₁), pero en el Sistema de Monitoreo Atmosférico de Jalisco (SIMAJ) solo se monitorean "
+        "las PM₁₀ y las PM₂.₅.",
+        estilos["cuerpo"],
+    ))
+    story.append(Paragraph(
+        "Su composición puede ser de origen mineral u orgánico incluyendo metales, sulfatos, nitratos, carbón y "
+        "compuestos orgánicos volátiles.",
+        estilos["cuerpo"],
+    ))
+    story.append(Paragraph(
+        "El tiempo de permanencia de las partículas en suspensión se obtiene de diversos factores, la mayor "
+        "parte de las partículas de diámetro superior a 10 µm se mantienen en el aire por medio de fuertes "
+        "corrientes convectivas ascendentes o vientos de cierta velocidad mientras que las partículas más "
+        "pequeñas tienen interacciones en procesos de coagulación por colisión con otro tipo de partículas y la "
+        "relación de los factores meteorológicos como la temperatura o la humedad relativa pueden cambiar su "
+        "comportamiento y su tamaño.",
+        estilos["cuerpo"],
+    ))
+    ruta = IMG_DIR / "particulas_tamanos.png"
+    if ruta.exists():
+        ancho = CONTENT_WIDTH * 0.82
+        alto = ancho * 333 / 693
+        imagen = FlowImage(str(ruta), width=ancho, height=alto)
+        imagen.hAlign = "CENTER"
+        story.append(Spacer(1, 6))
+        story.append(imagen)
+    return story
+
+
+def _seccion_pm10(anio, estilos, datos):
+    story = [Paragraph("PM₁₀", estilos["h2"])]
+    story.append(Paragraph(
+        "El material particulado es una mezcla de sustancias en estado líquido o sólido, que permanece "
+        "suspendida en la atmósfera por periodos variables de tiempo, que tiene muchas clasificaciones, las más "
+        "comunes son por su origen y tamaño, estas pueden contener polvo, polen, hollín y sales.",
+        estilos["cuerpo"],
+    ))
+    story.append(Paragraph(
+        "Un cabello humano promedio tiene un diámetro de 50 a 70 µm, lo que hace a las partículas PM₁₀ "
+        "significativamente más pequeñas.",
+        estilos["cuerpo"],
+    ))
+    story.append(Paragraph(
+        "El tamaño de las partículas, tiene la capacidad de penetración y retención en las vías respiratorias, "
+        "afectando a los pulmones siendo un factor importante para daños específicos a la salud, principalmente "
+        "a la región de los alveolos, causando enfermedades de asma e infecciones de vías respiratorias "
+        "(NOM-025-SSA1-2014 - Secretaría de Salud, 2014).",
+        estilos["cuerpo"],
+    ))
+    story.append(Paragraph(
+        "Los efectos hacia el medio ambiente de las partículas PM₁₀ provocan un impacto negativo al medio "
+        "ambiente, causando corrosión de materiales, degradación de bosques, disminución visual (INECC & "
+        "SEMARNAT, 2011).",
+        estilos["cuerpo"],
+    ))
+    story += _seccion_perfil_horario_mensual(
+        anio, estilos, datos, "PM10", "PM₁₀", "µg/m³", "Figura 15",
+        texto=_texto_perfil_horario(
+            anio, (datos.get("perfil_horario") or {}).get("PM10"), "PM₁₀", "µg/m³", "Figura 15", decimales=0,
+            frase_patron=("un patrón que suele asociarse con la actividad vehicular y con la menor dispersión "
+                          "atmosférica de las primeras horas de la mañana y de la noche"),
+        ),
+    )
+    story += _seccion_violines_mensuales(
+        anio, estilos, datos, "PM10", "PM₁₀", "µg/m³", "Figura 16",
+        serie="NowCast, promedio ponderado de 12 horas",
+        limites=[
+            dict(valor=60, color=NARANJA_SEMADET, dash=[3, 2], etiqueta="Límite 24 h (NOM)",
+                 texto="límite de 24 horas de la NOM (60 µg/m³)"),
+            dict(valor=28, color=GRIS_SEMADET, dash=None, etiqueta="Límite anual (NOM)",
+                 texto="límite anual de la NOM (28 µg/m³)"),
+        ],
+        decimales=0, con_resultados=True,
+        nota_final=("Los límites de la NOM se definen para promedios de 24 horas y anuales; aquí se muestran "
+                    "solo como referencia frente a la serie horaria NowCast."),
+    )
+    story += _seccion_mapa_dias_estaciones(
+        anio, estilos, datos, contaminante="PM10", nombre="PM₁₀", numero_figura="Figura 17",
+        nivel_titulo="h3", serie="promedio diario de 24 horas",
+    )
+    return story
+
+
+def _seccion_pm25(anio, estilos, datos):
+    story = [PageBreak(), Paragraph("PM₂.₅", estilos["h2"])]
+    story.append(Paragraph(
+        "El material particulado con un diámetro de 2.5 micrómetros son partículas extremadamente finas que "
+        "provienen de fuentes naturales y/o fuentes antropogénicas, estas partículas suelen ser conocidas "
+        "también como partículas “respirables” debido a que pueden ser inhaladas profundamente en los pulmones, "
+        "entrar al torrente sanguíneo e incluso al cerebro lo cual se puede asociar con enfermedades "
+        "cardiovasculares, respiratorias, y muerte prematura.",
+        estilos["cuerpo"],
+    ))
+    story.append(Paragraph(
+        "Sus fuentes antropogénicas son los automóviles, calentadores domésticos, termoeléctricas, etc., y sus "
+        "fuentes naturales incluyen los incendios y la resuspensión del polvo. Las partículas pueden ser "
+        "emitidas directamente de la fuente, o formarse en la atmósfera.",
+        estilos["cuerpo"],
+    ))
+    story.append(Paragraph(
+        "Las partículas finas (PM₂.₅) son la causa principal de visibilidad reducida (bruma), así como a través "
+        "del viento se pueden transportar las partículas a través de largas distancias y luego, estas pueden "
+        "instalarse en el suelo o el agua.",
+        estilos["cuerpo"],
+    ))
+    story += _seccion_perfil_horario_mensual(
+        anio, estilos, datos, "PM2.5", "PM₂.₅", "µg/m³", "Figura 18",
+        texto=_texto_perfil_horario(
+            anio, (datos.get("perfil_horario") or {}).get("PM2.5"), "PM₂.₅", "µg/m³", "Figura 18", decimales=0,
+            frase_patron=("un patrón que suele asociarse con la actividad vehicular y con la menor dispersión "
+                          "atmosférica de las primeras horas de la mañana y de la noche"),
+        ),
+    )
+    story += _seccion_violines_mensuales(
+        anio, estilos, datos, "PM2.5", "PM₂.₅", "µg/m³", "Figura 19",
+        serie="NowCast, promedio ponderado de 12 horas",
+        limites=[
+            dict(valor=33, color=NARANJA_SEMADET, dash=[3, 2], etiqueta="Límite 24 h (NOM)",
+                 texto="límite de 24 horas de la NOM (33 µg/m³)"),
+            dict(valor=10, color=GRIS_SEMADET, dash=None, etiqueta="Límite anual (NOM)",
+                 texto="límite anual de la NOM (10 µg/m³)"),
+        ],
+        decimales=0, con_resultados=True,
+        nota_final=("Los límites de la NOM se definen para promedios de 24 horas y anuales; aquí se muestran "
+                    "solo como referencia frente a la serie horaria NowCast."),
+    )
+    story += _seccion_mapa_dias_estaciones(
+        anio, estilos, datos, contaminante="PM2.5", nombre="PM₂.₅", numero_figura="Figura 20",
+        nivel_titulo="h3", serie="promedio diario de 24 horas",
+    )
+    return story
+
+
+def _seccion_dioxido_azufre(anio, estilos, datos):
+    story = [PageBreak(), Paragraph("Dióxido de azufre (SO₂)", estilos["h2"])]
+    story.append(Paragraph(
+        "El dióxido de azufre es un gas incoloro con olor muy perceptible e irritante, originado por fuentes "
+        "como quema de combustibles con azufre, tales como gasolina, combustóleo, diésel, carbón y otros "
+        "agentes comburentes. Así como fuentes naturales que aportan SO₂, tales como erupciones volcánicas, "
+        "decaimiento biológico e incendios forestales.",
+        estilos["cuerpo"],
+    ))
+    story.append(Paragraph(
+        "Su fuente de emisión se forma durante la quema de combustibles que contienen azufre.",
+        estilos["cuerpo"],
+    ))
+    story.append(Paragraph(
+        "Entre los efectos a la salud humana que este contaminante puede generar irritación en los ojos, nariz "
+        "y garganta, y agravar los síntomas del asma y la bronquitis. La exposición prolongada al bióxido de "
+        "azufre reduce el funcionamiento pulmonar y causa enfermedades respiratorias.",
+        estilos["cuerpo"],
+    ))
+    story.append(Spacer(1, 4))
+    story.append(_esquema_so2())
+
+    perfil = (datos.get("perfil_horario") or {}).get("SO2") or {}
+    sin_datos = not any(v is not None for mes in perfil.values() for v in mes.values())
+    if sin_datos:
+        story.append(Paragraph(f"Disponibilidad de datos de SO₂ en {anio}", estilos["h3"]))
+        story.append(Paragraph(
+            f"En {anio}, las bases de datos del SIMAJ no registran mediciones de SO₂ en ninguna de las estaciones "
+            "de la red, por lo que no es posible presentar el comportamiento horario de este contaminante ni "
+            "evaluar su cumplimiento respecto a la NOM (fuera de operación, FO, en la Tabla 5). Por esta razón, "
+            "esta sección no incluye gráficas de concentración; sí se presenta el mosaico de días con calidad "
+            f"Buena o Aceptable del periodo {anio - ANIOS_HISTORICO + 1}–{anio} para los años con registro.",
+            estilos["cuerpo"],
+        ))
+    story += _seccion_mapa_dias_estaciones(
+        anio, estilos, datos, contaminante="SO2", nombre="SO₂", numero_figura="Figura 11",
+        nivel_titulo="h3", serie="máximo horario del día",
+    )
+    return story
+
+
+def _seccion_ozono(anio, estilos, datos):
+    story = [PageBreak(), Paragraph("Ozono (O₃)", estilos["h2"])]
+    story.append(Paragraph(
+        "El ozono (O₃) en la capa más baja de la atmósfera, es un contaminante secundario que se forma por una "
+        "complicada serie de reacciones químicas y fotoquímicas entre emisiones primarias antropogénicas y "
+        "naturales de sus precursores los óxidos de nitrógeno (NOx), compuestos orgánicos volátiles (COV) o "
+        "hidrocarburos (HC) en presencia de la radiación solar, aunado a las condiciones geográficas, "
+        "climatológicas y meteorológicas favorables para la ocurrencia de estas reacciones. Y que presenta un "
+        "desequilibrio en la composición del aire.",
+        estilos["cuerpo"],
+    ))
+    story.append(Paragraph(
+        "Las fuentes de emisión que genera el ozono ocurre naturalmente en la capa de ozono estratosférica "
+        "(15 a 20 km snm). En la tropósfera, el ozono se forma cuando los COV y NOx, que vienen principalmente "
+        "de emisiones vehiculares, reaccionan en presencia de la luz solar.",
+        estilos["cuerpo"],
+    ))
+    story.append(Paragraph(
+        "Este contaminante puede tener efectos a la salud humana como las reducciones en la función pulmonar, "
+        "síntomas respiratorios como tos, flemas y sibilancias, y el agravamiento del asma. Esto debido a sus "
+        "características oxidantes a corto plazo, podemos sufrir de irritación de los tejidos sensibles de ojos "
+        "y vías respiratorias, mientras que, a largo plazo, podemos padecer de daños en los tejidos pulmonares, "
+        "reducción en la capacidad funcional pulmonar y enfermedades como asma e inclusive cáncer. Y cuya "
+        "exposición crónica a este contaminante está directamente relacionada con el aumento de la morbilidad "
+        "y mortalidad (SEMADET, 2019).",
+        estilos["cuerpo"],
+    ))
+    story.append(Paragraph(
+        "Y lo que respecta al medio ambiente, este puede tener efectos en las plantas que son sensibles a sus "
+        "altas concentraciones que generalmente producen clorosis (manchas amarillas en las partes verdes de una "
+        "planta debido a la falta de actividad de sus cloroplastos) y necrosis (muerte de sus células de un "
+        "tejido) en sus hojas. Su presencia también reduce la habilidad de las plantas de absorber dióxido de "
+        "carbono (CO₂) alterando su crecimiento y variedad. Además de esto, el O₃ troposférico actúa como gas de "
+        "efecto invernadero (GEI) atrapando el calor del sol y calentando la superficie de la tierra, lo que "
+        "afecta directamente el clima de nuestro planeta (SEMADET, 2019). Además de efectos diversos a los "
+        "materiales de los edificios.",
+        estilos["cuerpo"],
+    ))
+    story.append(Spacer(1, 4))
+    story.append(_esquema_o3())
+    story += _seccion_perfil_horario_mensual(
+        anio, estilos, datos, "O3", "O₃", "ppm", "Figura 12",
+        texto=_texto_perfil_horario(
+            anio, (datos.get("perfil_horario") or {}).get("O3"), "O₃", "ppm", "Figura 12",
+            frase_patron=("un patrón consistente con su formación fotoquímica, que requiere radiación solar y por eso "
+                          "se intensifica en las horas de mayor insolación"),
+            limite=0.090, texto_limite="límite horario de la NOM (0.090 ppm)",
+        ),
+    )
+    story += _seccion_violines_mensuales(
+        anio, estilos, datos, "O3", "O₃", "ppm", "Figura 13", serie="promedio móvil de 8 horas",
+        limites=[
+            dict(valor=0.060, color=AZUL_SEMADET, dash=[3, 2], etiqueta="Límite 8 h (NOM)",
+                 texto="límite de 8 horas de la NOM (0.060 ppm)"),
+            dict(valor=0.090, color=GRIS_SEMADET, dash=None, etiqueta="Límite anual (NOM)",
+                 texto="límite anual de la NOM (0.090 ppm, máximo de 1 hora)"),
+        ],
+        decimales=3, con_resultados=True,
+    )
+    story += _seccion_mapa_dias_estaciones(
+        anio, estilos, datos, contaminante="O3", nombre="O₃", numero_figura="Figura 14",
+        nivel_titulo="h3", serie="máximo horario del día",
+    )
+    return story
+
+
+def _seccion_perfil_horario_mensual(anio, estilos, datos, contaminante, nombre, unidad, numero_figura, texto=None):
     story = [Paragraph(f"Comportamiento horario mensual de {nombre} en el AMG", estilos["h3"])]
 
-    story.append(Paragraph(
+    story.append(Paragraph(texto or (
         f"Para cada hora del año se toma la concentración máxima de {nombre} entre las estaciones de la red, "
         "que representa al AMG, y se promedia por hora del día dentro de cada mes de "
         f"{anio} (se exigen al menos 6 días con dato por hora, y se aplica una media móvil de 3 horas "
         f"solo para suavizar la visualización). La {numero_figura} encadena esos doce ciclos de 24 horas, uno "
-        "por mes, en una sola línea continua.",
-        estilos["cuerpo"],
-    ))
+        "por mes, en una sola línea continua."
+    ), estilos["cuerpo"]))
 
     perfil_anio = (datos.get("perfil_horario") or {}).get(contaminante)
     if not perfil_anio:
@@ -994,8 +1466,67 @@ def _seccion_perfil_horario_mensual(anio, estilos, datos, contaminante, nombre, 
     return story
 
 
+def _texto_resultados_violines(anio, mensual, nombre, unidad, decimales, limites):
+    """Lectura breve de lo que muestra la gráfica de violines, calculada de los
+    estadísticos mensuales: cómo cambia la mediana, qué tan ancha es la caja y
+    en qué meses se rebasa el primer límite de la NOM."""
+    idx = [m for m in range(1, 13) if mensual.get(str(m), {}).get("valido")]
+    if not idx:
+        return ""
+    med = {m: mensual[str(m)]["mediana"] for m in idx}
+    iqr = {m: mensual[str(m)]["q3"] - mensual[str(m)]["q1"] for m in idx}
+    maxs = {m: mensual[str(m)]["kde_x"][-1] for m in idx}
+    primero, ultimo = idx[0], idx[-1]
+    f = f".{decimales}f"
+
+    txt = ""
+    if len(idx) == 12:
+        m_alto, m_bajo = max(med, key=med.get), min(med, key=med.get)
+        m_ancha = max(iqr, key=iqr.get)
+        txt += (
+            f"La mediana horaria de {nombre} en el AMG es mayor en {MESES_ES[m_alto - 1]} "
+            f"({med[m_alto]:{f}} {unidad}) y menor en {MESES_ES[m_bajo - 1]} ({med[m_bajo]:{f}} {unidad}). "
+            f"La caja es más ancha en {MESES_ES[m_ancha - 1]} ({iqr[m_ancha]:{f}} {unidad}), el mes con mayor "
+            "variabilidad entre horas. "
+        )
+    elif len(idx) > 1:
+        m_alto = max(med, key=med.get)
+        txt += (
+            f"Entre {MESES_ES[primero - 1]} y {MESES_ES[ultimo - 1]}, la mediana horaria de {nombre} en el AMG "
+            f"pasa de {med[primero]:{f}} a {med[ultimo]:{f}} {unidad}, y su valor más alto se da en "
+            f"{MESES_ES[m_alto - 1]} ({med[m_alto]:{f}} {unidad}). "
+        )
+        if iqr[ultimo] > 1.2 * iqr[primero]:
+            txt += (f"La caja se ensancha de {iqr[primero]:{f}} a {iqr[ultimo]:{f}} {unidad}, lo que indica "
+                    "mayor variabilidad entre horas hacia el final del periodo. ")
+        elif iqr[ultimo] < 0.8 * iqr[primero]:
+            txt += (f"La caja se estrecha de {iqr[primero]:{f}} a {iqr[ultimo]:{f}} {unidad}, lo que indica "
+                    "menor variabilidad entre horas hacia el final del periodo. ")
+    if limites:
+        lim = limites[0]
+        arriba = [m for m in idx if maxs[m] > lim["valor"]]
+        if arriba:
+            m_max = max(maxs, key=maxs.get)
+            donde = ("todos los meses con dato" if len(arriba) == len(idx) and len(idx) > 2
+                     else _lista_es([MESES_ES[m - 1] for m in arriba]))
+            txt += (
+                f"El {lim['texto']} se rebasa en al menos una hora en "
+                f"{donde}; el máximo, {maxs[m_max]:{f}} {unidad}, ocurre en "
+                f"{MESES_ES[m_max - 1]}. "
+            )
+        else:
+            txt += f"En ningún mes se rebasa el {lim['texto']}. "
+    if len(idx) < 12:
+        txt += (f"Con solo {len(idx)} {'mes' if len(idx) == 1 else 'meses'} de registro suficiente, esta evolución "
+                "debe interpretarse con cautela.")
+    return txt.rstrip()
+
+
 def _seccion_violines_mensuales(anio, estilos, datos, contaminante, nombre, unidad, numero_figura,
-                                serie, limite=None, texto_limite=""):
+                                serie, limites=None, decimales=1, nota_final="", con_resultados=False):
+    """`limites`: lista de dicts (valor, color, dash, etiqueta, texto) con las
+    líneas de la NOM; el párrafo compara el máximo del año con el primero."""
+    limites = limites or []
     story = [Paragraph(f"Distribución horaria mensual de {nombre} en el AMG", estilos["h3"])]
 
     mensual = (datos.get("violines_mensuales") or {}).get(contaminante)
@@ -1003,9 +1534,15 @@ def _seccion_violines_mensuales(anio, estilos, datos, contaminante, nombre, unid
         story.append(Paragraph("[Faltan los datos de la distribución mensual]", estilos["caption"]))
         return story
 
-    meses_di = [MES_LABELS_ES[int(m) - 1] for m, v in mensual.items() if not v["valido"]]
+    idx_di = [int(m) for m, v in mensual.items() if not v["valido"]]
+    if len(idx_di) > 2 and idx_di == list(range(idx_di[0], idx_di[-1] + 1)):
+        meses_di = f"de {MESES_ES[idx_di[0] - 1]} a {MESES_ES[idx_di[-1] - 1]}"
+    else:
+        meses_di = ", ".join(MESES_ES[m - 1] for m in idx_di)
     validos = [v for v in mensual.values() if v["valido"]]
     maximo = max(v["kde_x"][-1] for v in validos) if validos else None
+    y_top = maximo * 1.2 if maximo else 1.0
+    visibles = [lim for lim in limites if lim["valor"] <= y_top]
 
     texto = (
         f"La {numero_figura} muestra, para cada mes de {anio}, la distribución de las concentraciones "
@@ -1014,14 +1551,21 @@ def _seccion_violines_mensuales(anio, estilos, datos, contaminante, nombre, unid
         "abarca del primer al tercer cuartil, la línea blanca es la mediana y el punto blanco, la media. "
         "Solo se grafican los meses con al menos 75 % de sus horas con dato."
     )
-    if meses_di:
-        texto += f" Los meses sin suficientes datos se indican como D.I. ({', '.join(meses_di)})."
-    if limite is not None and maximo is not None:
-        if maximo < limite:
-            texto += (f" El valor más alto del año, {maximo:.1f} {unidad}, se mantuvo por debajo del "
-                      f"{texto_limite}.")
+    if idx_di:
+        texto += f" Los meses sin suficientes datos se indican como D.I. ({meses_di})."
+    if limites and maximo is not None:
+        lim = limites[0]
+        if maximo < lim["valor"]:
+            texto += (f" El valor más alto del año, {maximo:.{decimales}f} {unidad}, se mantuvo por debajo del "
+                      f"{lim['texto']}.")
         else:
-            texto += f" El valor más alto del año, {maximo:.1f} {unidad}, superó el {texto_limite}."
+            texto += f" El valor más alto del año, {maximo:.{decimales}f} {unidad}, superó el {lim['texto']}"
+            if all(v["bigote_sup"] <= lim["valor"] for v in validos):
+                horas = sum(1 for v in validos for a in v["atipicos"] if a > lim["valor"])
+                texto += f" en {horas} {'hora' if horas == 1 else 'horas'} del periodo con datos"
+            texto += "."
+    if nota_final:
+        texto += " " + nota_final
     story.append(Paragraph(texto, estilos["cuerpo"]))
 
     story.append(KeepTogether([
@@ -1029,14 +1573,18 @@ def _seccion_violines_mensuales(anio, estilos, datos, contaminante, nombre, unid
             f"{numero_figura}. Distribución horaria mensual de {nombre} ({serie}) en el AMG, {anio}.",
             estilos["tabla_caption"],
         ),
-        _grafica_violines_mensuales(mensual, f"Concentración de {nombre} ({unidad})", limite),
+        _grafica_violines_mensuales(mensual, f"Concentración de {nombre} ({unidad})", visibles),
         Spacer(1, 4),
-        _leyenda_violines(),
+        _leyenda_violines(visibles),
     ]))
+    if con_resultados:
+        story.append(Spacer(1, 8))
+        story.append(Paragraph(_texto_resultados_violines(anio, mensual, nombre, unidad, decimales, limites),
+                               estilos["cuerpo"]))
     return story
 
 
-def _grafica_violines_mensuales(mensual, etiqueta_y, limite=None):
+def _grafica_violines_mensuales(mensual, etiqueta_y, limites=()):
     """Violines por mes con la paleta del notebook (violín naranja, caja
     negra, mediana y media blancas, atípicos gris, límite NOM 8 h en azul)."""
     from reportlab.graphics.shapes import Polygon
@@ -1059,16 +1607,20 @@ def _grafica_violines_mensuales(mensual, etiqueta_y, limite=None):
         nivel = i * paso
         y = y_de(nivel)
         d.add(Line(pad_izq, y, ancho - pad_der, y, strokeColor=colors.HexColor("#EEF2F3"), strokeWidth=0.5))
-        d.add(String(pad_izq - 5, y - 2.5, f"{nivel:.1f}",
+        decimales = 3 if paso < 0.1 else 1 if paso < 1 else 0
+        d.add(String(pad_izq - 5, y - 2.5, f"{nivel:.{decimales}f}",
                      fontName="Montserrat", fontSize=7.4, fillColor=MUTED, textAnchor="end"))
     d.add(Group(
         String(0, 0, etiqueta_y, fontName="Montserrat", fontSize=7.6, fillColor=TEXT, textAnchor="middle"),
         transform=(0, 1, -1, 0, 9, pad_abajo + plot_h / 2),
     ))
 
-    if limite is not None and limite <= y_top:
-        y = y_de(limite)
-        d.add(Line(pad_izq, y, ancho - pad_der, y, strokeColor=AZUL_SEMADET, strokeWidth=1.3, strokeDashArray=[3, 2]))
+    for lim in limites:
+        y = y_de(lim["valor"])
+        linea = Line(pad_izq, y, ancho - pad_der, y, strokeColor=lim["color"], strokeWidth=1.3)
+        if lim["dash"]:
+            linea.strokeDashArray = lim["dash"]
+        d.add(linea)
 
     negro = colors.black
     mitad = mes_w * 0.36
@@ -1106,7 +1658,7 @@ def _grafica_violines_mensuales(mensual, etiqueta_y, limite=None):
     return d
 
 
-def _leyenda_violines():
+def _leyenda_violines(limites=()):
     fuente, tam = "Montserrat", 7.8
     d = Drawing(CONTENT_WIDTH, 14)
     x = 0.0
@@ -1114,7 +1666,7 @@ def _leyenda_violines():
     def texto(t):
         nonlocal x
         d.add(String(x, 4, t, fontName=fuente, fontSize=tam, fillColor=TEXT))
-        x += pdfmetrics.stringWidth(t, fuente, tam) + 14
+        x += pdfmetrics.stringWidth(t, fuente, tam) + 10
 
     poligono = Rect(x, 2, 9, 9, fillColor=NARANJA_SEMADET, strokeColor=colors.black, strokeWidth=0.6)
     poligono.fillOpacity = 0.6
@@ -1125,6 +1677,11 @@ def _leyenda_violines():
     d.add(Line(x, 6.5, x + 9, 6.5, strokeColor=colors.black, strokeWidth=1.4)); x += 13; texto("Mediana")
     d.add(Circle(x + 4, 6.5, 2.2, fillColor=colors.white, strokeColor=colors.black, strokeWidth=0.5)); x += 11; texto("Media")
     d.add(Circle(x + 3, 6.5, 1.2, fillColor=GRIS_SEMADET, strokeColor=None)); x += 9; texto("Valores atípicos")
+    for lim in limites:
+        linea = Line(x, 6.5, x + 11, 6.5, strokeColor=lim["color"], strokeWidth=1.3)
+        if lim["dash"]:
+            linea.strokeDashArray = lim["dash"]
+        d.add(linea); x += 15; texto(lim["etiqueta"])
     return d
 
 
@@ -1138,7 +1695,7 @@ def _suavizar_3h(valores):
 
 
 def _paso_eje(maximo, max_ticks=9):
-    for paso in (0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5, 10, 20, 25, 50, 100, 200, 500):
+    for paso in (0.005, 0.01, 0.02, 0.025, 0.05, 0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5, 10, 20, 25, 50, 100, 200, 500):
         if maximo / paso <= max_ticks:
             return paso
     return 1000
@@ -1179,7 +1736,8 @@ def _grafica_perfil_horario_anual(perfil_anio, etiqueta_y):
         nivel = i * paso
         y = y_de(nivel)
         d.add(Line(pad_izq, y, ancho - pad_der, y, strokeColor=colors.HexColor("#EEF2F3"), strokeWidth=0.5))
-        d.add(String(pad_izq - 5, y - 2.5, f"{nivel:.1f}" if paso < 1 else f"{nivel:.0f}", fontName="Montserrat", fontSize=7.4,
+        decimales = 3 if paso < 0.1 else 1 if paso < 1 else 0
+        d.add(String(pad_izq - 5, y - 2.5, f"{nivel:.{decimales}f}", fontName="Montserrat", fontSize=7.4,
                      fillColor=MUTED, textAnchor="end"))
 
     d.add(Group(
@@ -1198,14 +1756,20 @@ def _grafica_perfil_horario_anual(perfil_anio, etiqueta_y):
         d.add(String(pad_izq + mes_idx * mes_w + mes_w / 2, 4, MES_LABELS_ES[mes_idx],
                      fontName="Montserrat-Bold", fontSize=7.6, fillColor=NAVY, textAnchor="middle"))
 
+    for mes_idx, serie in enumerate(series):
+        if all(v is None for v in serie):
+            d.add(String(pad_izq + mes_idx * mes_w + mes_w / 2, pad_abajo + 4, "D.I.", fontName="Montserrat-Bold",
+                         fontSize=7, fillColor=colors.HexColor("#8A9BA3"), textAnchor="middle"))
+
     puntos = [
-        (x_de(mes_idx, hora), y_de(valor))
+        (mes_idx, x_de(mes_idx, hora), y_de(valor))
         for mes_idx, serie in enumerate(series)
         for hora, valor in enumerate(serie)
         if valor is not None
     ]
-    for (x1, y1), (x2, y2) in zip(puntos, puntos[1:]):
-        d.add(Line(x1, y1, x2, y2, strokeColor=AQUA, strokeWidth=1.3))
+    for (m1, x1, y1), (m2, x2, y2) in zip(puntos, puntos[1:]):
+        if m2 - m1 <= 1:  # no unir a través de meses sin datos
+            d.add(Line(x1, y1, x2, y2, strokeColor=AQUA, strokeWidth=1.3))
 
     return d
 
@@ -1237,13 +1801,6 @@ def _seccion_mapa_dias_estaciones(anio, estilos, datos, contaminante=None, nombr
         estilos["cuerpo"],
     ))
 
-    if mapas and all(v["dias"] == v["validos"] for m in mapas.values() for v in m.values()):
-        story.append(Paragraph(
-            f"En todos los días con dato de estos años, el {nombre} se mantuvo en categoría Buena o Aceptable, "
-            "por lo que el tamaño de cada burbuja equivale también al número de días con medición válida.",
-            estilos["cuerpo"],
-        ))
-
     story.append(Paragraph(
         "Las burbujas con borde punteado corresponden a estaciones que no alcanzaron el 75 % de días con "
         "dato en el año (por ejemplo, las que iniciaron operaciones o estuvieron fuera de servicio), por lo "
@@ -1267,7 +1824,135 @@ def _seccion_mapa_dias_estaciones(anio, estilos, datos, contaminante=None, nombr
         Spacer(1, 6),
         _leyenda_mapa_dias(),
     ]))
+    nombres = {e["simbolo"]: e["estacion"] for e in datos["estaciones"]}
+    story.append(Spacer(1, 10))
+    for parrafo in _analisis_mapas_dias(anio, mapas, nombres, orden_anios, nombre_pol=nombre if contaminante else None):
+        story.append(Paragraph(parrafo, estilos["cuerpo"]))
     return story
+
+
+def _lista_es(items):
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " y " + items[-1]
+
+
+def _analisis_mapas_dias(anio, mapas, nombres, orden_anios, nombre_pol=None):
+    """Texto de análisis de un mosaico de mapas de días Buena/Aceptable. Todo
+    se calcula de 'mapas' ({año: {estación: {dias, validos, suficiente}}}); no
+    hay cifras fijas, así que cambia sola con los datos."""
+    def nom(e):
+        return f"{nombres.get(e, e)} ({e})"
+
+    suf = {a: {e: v["dias"] for e, v in mapas[a].items() if v["suficiente"]} for a in orden_anios if a in mapas}
+    parrafos = []
+
+    # 1) Año del informe
+    actual = suf.get(anio, {})
+    if actual:
+        orden = sorted(actual, key=lambda e: -actual[e])
+        top = orden[:3]
+        menor = orden[-1]
+        txt = (
+            f"En {anio}, entre las estaciones con datos suficientes, las que acumularon más días con calidad "
+            f"Buena o Aceptable fueron {_lista_es([f'{nombres.get(e, e)} ({e}; {actual[e]} días)' for e in top])}"
+        )
+        if len(orden) > 3:
+            txt += f", mientras que {nombres.get(menor, menor)} ({menor}) registró el menor número ({actual[menor]} días)"
+        txt += "."
+        parciales = {e: v["dias"] for e, v in mapas[anio].items() if not v["suficiente"] and v["dias"] > 0}
+        if parciales:
+            txt += (
+                f" {_lista_es(sorted(parciales))} aparecen con datos parciales ({min(parciales.values())} a "
+                f"{max(parciales.values())} días), pues no alcanzaron el 75 % de días con dato del año; por ello "
+                "sus cifras no son comparables con las de las demás."
+            )
+        parrafos.append(txt)
+
+    if not actual and anio in mapas:
+        parc = {e: v for e, v in mapas[anio].items() if v["dias"] > 0 or v["validos"] > 0}
+        if parc:
+            orden = sorted(parc, key=lambda e: -parc[e]["dias"])
+            tot_dias = sum(v["dias"] for v in parc.values())
+            tot_validos = sum(v["validos"] for v in parc.values())
+            txt = (
+                f"En {anio} ninguna estación alcanzó el 75 % de días con dato"
+                + (f" de {nombre_pol}" if nombre_pol else "")
+                + f", por lo que las cifras son parciales ({min(v['validos'] for v in parc.values())} a "
+                f"{max(v['validos'] for v in parc.values())} días con dato por estación). Aun así, "
+                f"{nombres.get(orden[0], orden[0])} ({orden[0]}) acumuló el mayor número de días con calidad Buena o "
+                f"Aceptable ({parc[orden[0]]['dias']} de {parc[orden[0]]['validos']} días con dato) y "
+                f"{nombres.get(orden[-1], orden[-1])} ({orden[-1]}) el menor ({parc[orden[-1]]['dias']} de "
+                f"{parc[orden[-1]]['validos']}). En conjunto, {tot_dias} de {tot_validos} días con dato "
+                f"({100 * tot_dias / tot_validos:.1f} %) tuvieron calidad Buena o Aceptable."
+            )
+            parrafos.append(txt)
+
+    # 2) Cambio respecto al año anterior
+    previo = suf.get(anio - 1, {})
+    comunes = [e for e in actual if e in previo]
+    if comunes:
+        cambios = {e: actual[e] - previo[e] for e in comunes}
+        suben = [e for e in comunes if cambios[e] > 0]
+        bajan = [e for e in comunes if cambios[e] < 0]
+        e_max, e_min = max(comunes, key=lambda e: cambios[e]), min(comunes, key=lambda e: cambios[e])
+        def _est(n, sing, plur):
+            return f"{n} {sing if n == 1 else plur}"
+
+        txt = (
+            f"Respecto a {anio - 1}, de las {len(comunes)} estaciones con datos suficientes en ambos años, "
+            f"{_est(len(suben), 'aumentó', 'aumentaron')} sus días con calidad Buena o Aceptable y "
+            f"{_est(len(bajan), 'los disminuyó', 'los disminuyeron')}"
+        )
+        if cambios[e_max] > 0:
+            txt += f"; el mayor incremento fue en {nom(e_max)}, con {cambios[e_max]} días más"
+        if cambios[e_min] < 0:
+            txt += f", y la mayor disminución en {nom(e_min)}, con {-cambios[e_min]} días menos"
+        parrafos.append(txt + ".")
+
+    # 3) Todo el periodo
+    anios_ok = [a for a in orden_anios if len(suf.get(a, {})) >= 3]
+    if anios_ok:
+        a_max, e_max = max(((a, e) for a in anios_ok for e in suf[a]), key=lambda t: suf[t[0]][t[1]])
+        txt = (
+            f"En el periodo {orden_anios[-1]}–{orden_anios[0]}, el valor más alto lo registró {nom(e_max)} en "
+            f"{a_max}, con {suf[a_max][e_max]} días."
+        )
+        if len(anios_ok) > 1:
+            promedio = {a: sum(suf[a].values()) / len(suf[a]) for a in anios_ok}
+            mejor, peor = max(promedio, key=promedio.get), min(promedio, key=promedio.get)
+            txt += (
+                f" Considerando las estaciones con datos suficientes en cada año, el promedio fue mayor en "
+                f"{mejor} ({promedio[mejor]:.0f} días por estación) y menor en {peor} ({promedio[peor]:.0f})"
+            )
+            if len({frozenset(suf[a]) for a in anios_ok}) > 1:
+                txt = txt.rstrip() + ", aunque las estaciones con datos suficientes no fueron las mismas cada año, por lo que la comparación debe leerse con cautela"
+            txt += "."
+        cuenta = {}
+        for a in anios_ok:
+            e_bajo = min(suf[a], key=lambda e: suf[a][e])
+            cuenta[e_bajo] = cuenta.get(e_bajo, 0) + 1
+        e_frec, veces = max(cuenta.items(), key=lambda t: t[1])
+        if veces >= 3:
+            txt += f" {nom(e_frec)} fue la estación con menos días en {veces} de los {len(anios_ok)} años."
+        parrafos.append(txt)
+
+    if nombre_pol:
+        sin_registro = [a for a in orden_anios if a in mapas and all(v["validos"] == 0 for v in mapas[a].values())]
+        if sin_registro:
+            parrafos.append(
+                f"En {_lista_es([str(a) for a in sorted(sin_registro)])} no se cuenta con registro de {nombre_pol} "
+                "en ninguna estación, por lo que "
+                + ("ese año aparece" if len(sin_registro) == 1 else "esos años aparecen") + " sin burbujas."
+            )
+
+    # 4) Lectura específica de un contaminante
+    if nombre_pol and mapas and all(v["dias"] == v["validos"] for m in mapas.values() for v in m.values()):
+        parrafos.append(
+            f"Como en todos los días con dato el {nombre_pol} se mantuvo en categoría Buena o Aceptable, las "
+            "diferencias entre estaciones reflejan sobre todo cuántos días estuvo disponible la medición y no "
+            f"diferencias en la calidad del aire: en ninguna estación se registraron días con categoría Mala o "
+            f"peor por {nombre_pol}."
+        )
+    return parrafos
 
 
 MAPA_ZOOM = 13
@@ -1916,6 +2601,25 @@ def _tabla_contaminantes(estilos, filas):
 # ---------------------------------------------------------------------------
 # Ensamblado del documento
 # ---------------------------------------------------------------------------
+def _construir_story(anio, estilos, datos):
+    story = [PageBreak()]
+    story += _seccion_introduccion(anio, estilos)
+    story += _seccion_simaj(anio, estilos, datos)
+    story += _seccion_evaluacion_nom(estilos, datos)
+    story += _seccion_panorama_general(anio, estilos, datos)
+    story += _seccion_horas_categoria(anio, estilos, datos)
+    story += _seccion_mapa_dias_estaciones(anio, estilos, datos)
+    story += _seccion_cumplimiento_nom(anio, estilos, datos)
+    story += _seccion_monoxido_carbono(anio, estilos, datos)
+    story += _seccion_dioxido_nitrogeno(anio, estilos, datos)
+    story += _seccion_dioxido_azufre(anio, estilos, datos)
+    story += _seccion_ozono(anio, estilos, datos)
+    story += _seccion_particulas_suspendidas(anio, estilos, datos)
+    story += _seccion_pm10(anio, estilos, datos)
+    story += _seccion_pm25(anio, estilos, datos)
+    return story
+
+
 def generar_informe(anio, salida=None):
     datos = _datos_del_anio(anio)
     _registrar_fuentes()
@@ -1936,15 +2640,7 @@ def generar_informe(anio, salida=None):
         author="SIMAJ",
     )
 
-    story = [PageBreak()]
-    story += _seccion_introduccion(anio, estilos)
-    story += _seccion_simaj(anio, estilos, datos)
-    story += _seccion_evaluacion_nom(estilos, datos)
-    story += _seccion_panorama_general(anio, estilos, datos)
-    story += _seccion_horas_categoria(anio, estilos, datos)
-    story += _seccion_mapa_dias_estaciones(anio, estilos, datos)
-    story += _seccion_cumplimiento_nom(anio, estilos, datos)
-    story += _seccion_monoxido_carbono(anio, estilos, datos)
+    story = _construir_story(anio, estilos, datos)
 
     dibujar_portada = _dibujar_portada(anio, datos)
     pintar_fondo = _fondo_pagina(anio)
