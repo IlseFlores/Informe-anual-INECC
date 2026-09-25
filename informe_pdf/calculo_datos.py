@@ -415,6 +415,23 @@ def calcular_violines_mensuales(dfh, columna, suavizado=None, estaciones=EST_ORD
     serie = dfh[dfh["STATION"].isin(estaciones)].groupby("DATE")[columna].max()
     if suavizado is not None:
         serie = suavizado(serie)
+
+    # Estación con el valor más alto de cada mes: se aplica el mismo suavizado a la
+    # serie de cada estación y se compara su máximo mensual.
+    por_estacion = {}
+    for est in estaciones:
+        s_est = dfh.loc[dfh["STATION"] == est].set_index("DATE")[columna]
+        if s_est.dropna().empty:
+            continue
+        if suavizado is not None:
+            s_est = suavizado(s_est)
+        por_estacion[est] = pd.to_numeric(s_est, errors="coerce")
+
+    def _estacion_maxima(mes):
+        maximos = {e: v[v.index.month == mes].max() for e, v in por_estacion.items()}
+        maximos = {e: m for e, m in maximos.items() if pd.notna(m)}
+        return max(maximos, key=maximos.get) if maximos else None
+
     salida = {}
     for mes in range(1, 13):
         del_mes = serie[serie.index.month == mes]
@@ -437,6 +454,7 @@ def calcular_violines_mensuales(dfh, columna, suavizado=None, estaciones=EST_ORD
             "bigote_inf": round(float(dentro.min()), 4), "bigote_sup": round(float(dentro.max()), 4),
             "atipicos": [round(float(v), 3) for v in np.sort(atipicos)],
             "kde_x": [round(float(v), 4) for v in grid], "kde_y": [round(float(v), 3) for v in dens],
+            "estacion_max": _estacion_maxima(mes),
         }
     return salida
 

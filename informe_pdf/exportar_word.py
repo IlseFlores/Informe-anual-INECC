@@ -208,6 +208,8 @@ class Exportador:
             self._tabla(flowable)
         elif isinstance(flowable, Drawing):
             self._dibujo(flowable)
+        elif isinstance(flowable, g.MosaicoMapas):
+            self._dibujo(flowable.dibujo_completo)
         elif isinstance(flowable, FlowImage):
             self.doc.add_picture(str(flowable.filename), width=Pt(min(flowable.drawWidth, ANCHO_UTIL_PT)))
             self.doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -231,6 +233,24 @@ class Exportador:
             p.paragraph_format.space_before = Pt(8)
             p.paragraph_format.keep_with_next = True
             _agregar_runs(p, texto, 9.5, NAVY, negrita_base=True)
+        elif nombre == "credito_nombre":
+            p = self.doc.add_paragraph()
+            p.paragraph_format.space_after = Pt(0)
+            _agregar_runs(p, texto, 13, NAVY, negrita_base=True)
+        elif nombre == "credito_cargo":
+            p = self.doc.add_paragraph()
+            p.paragraph_format.space_after = Pt(14)
+            _agregar_runs(p, texto, 10.5, MUTED)
+        elif nombre == "credito_equipo":
+            p = self.doc.add_paragraph()
+            p.paragraph_format.space_after = Pt(8)
+            _agregar_runs(p, texto, 11.5, NAVY, negrita_base=True)
+        elif nombre == "bibliografia":
+            p = self.doc.add_paragraph()
+            p.paragraph_format.left_indent = Pt(16)
+            p.paragraph_format.first_line_indent = Pt(-16)
+            p.paragraph_format.space_after = Pt(6)
+            _agregar_runs(p, "- " + texto, 10, TEXTO)
         elif nombre in ("nota", "nota_destacada"):
             p = self.doc.add_paragraph()
             _agregar_runs(p, texto, 8.5, MUTED)
@@ -358,7 +378,7 @@ def exportar(anio, salida=None):
     datos = g._datos_del_anio(anio)
     g._registrar_fuentes()
     estilos = g._estilos()
-    story = g._construir_story(anio, estilos, datos)
+    story = g._construir_story(anio, estilos, datos, con_indice=False)
 
     exp = Exportador(anio)
     exp.portada(datos)
