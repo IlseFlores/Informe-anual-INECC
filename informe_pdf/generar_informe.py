@@ -94,7 +94,7 @@ COORDENADAS_ESTACIONES = {
     "SFE": (-103.37718, 20.528954), "SMT": (-103.431768, 20.723836), "TLA": (-103.312497, 20.640941),
     "VAL": (-103.398572, 20.680141),
 }
-COLOR_BURBUJA = colors.HexColor("#2E9E3B")
+COLOR_BURBUJA = AQUA
 
 # Figura 5 (perfil horario anual, una sola línea encadenada por mes).
 MESES_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
@@ -149,25 +149,28 @@ DATOS_POR_ANIO = {
         "fecha_publicacion": "Publicación: Octubre 2025",
         "creditos": {
             "directivos": [
-                ("Sergio Humberto Graf Montero", "Secretario de Medio Ambiente y Desarrollo Territorial"),
-                ("Josué Díaz Vázquez", "Director General de Protección y Gestión Ambiental"),
-                ("Estefany López Murillo", "Director de Gestión de la Calidad del Aire"),
+                ("Paola Bauche Petersen", "Secretaria de Medio Ambiente y Desarrollo Territorial"),
+                ("Karen de la Cabada Ruíz", "Directora General de Calidad del Aire"),
+                ("Elizabeth Duran Chávez", "Directora de Gestión de la Calidad del Aire"),
+                ("Nayeli Areli Perez Padilla", "Jefe de Centro Oficial de Medición"),
+                ("Ilse Regina Flores Reyes", "Técnico de Escuadrón Verde"),
             ],
-            "equipo": [
-                "Karen de la Cabada Ruíz",
-                "Elizabeth Duran Chávez",
-                "Perez Padilla Nayeli Areli",
-                "Rodriguez Perez Beatriz",
-                "Ilse Regina Flores Reyes",
-            ],
+            "equipo": [],
         },
         "poblacion_amg": "5,268,642",
         "mes_incorporacion_nuevas": "septiembre",
+        # Oculta la sección de Dióxido de nitrógeno (NO₂) solo en el informe de este
+        # año; el código de la sección se queda intacto para reactivarla cuando haya
+        # suficiente registro anual de NO₂ (quitar esta línea, o ponerla en True).
+        "incluir_no2": False,
+        # Igual que "incluir_no2": en 2024 no hay ningún dato de SO₂ (ver la Tabla 5,
+        # fila FO en todas las estaciones), así que se oculta la sección completa.
+        "incluir_so2": False,
         "porcentaje_poblacion_amg": "63",
         "fuente_poblacion": "IIEG, 2022; INEGI, 2021",
         "imagen_red_monitoreo": IMG_DIR / "red_monitoreo_2024.png",
         "caption_imagen_red": (
-            "Imagen 1. Ubicación de las estaciones de monitoreo que conforman "
+            "Figura 1. Ubicación de las estaciones de monitoreo que conforman "
             "el Sistema de Monitoreo Atmosférico de Jalisco (SIMAJ) en el "
             "Área Metropolitana de Guadalajara."
         ),
@@ -178,23 +181,24 @@ DATOS_POR_ANIO = {
         # del Informe Nacional de Calidad del Aire (INECC); Oblatos y Atemajac
         # no cuentan con equipo para PM2.5.
         "estaciones": [
-            {"municipio": "San Pedro Tlaquepaque", "area_influencia": "San Pedro Tlaquepaque y Guadalajara", "estacion": "Tlaquepaque", "simbolo": "TLA", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
+            {"municipio": "San Pedro Tlaquepaque", "area_influencia": "San Pedro Tlaquepaque y Guadalajara", "estacion": "Tlaquepaque", "simbolo": "TLA", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": False, "O3": True, "SO2": True, "NO2": True, "CO": False}},
             {"municipio": "El Salto", "area_influencia": "El Salto, San Pedro Tlaquepaque y Tlajomulco de Zúñiga", "estacion": "Pintas", "simbolo": "PIN", "nueva": False, "anio_inicio": 2011, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
             {"municipio": "Guadalajara", "area_influencia": "Guadalajara", "estacion": "Centro", "simbolo": "CEN", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
-            {"municipio": "Guadalajara", "area_influencia": "Zapopan y Guadalajara", "estacion": "Country", "simbolo": "COU", "nueva": True, "anio_inicio": 2024, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
+            {"municipio": "Guadalajara", "area_influencia": "Zapopan y Guadalajara", "estacion": "Country", "simbolo": "COU", "nueva": True, "anio_inicio": 2024, "contaminantes": {"PM10": True, "PM25": False, "O3": True, "SO2": False, "NO2": False, "CO": False}},
             {"municipio": "Guadalajara", "area_influencia": "Guadalajara y San Pedro Tlaquepaque", "estacion": "Miravalle", "simbolo": "MIR", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
-            {"municipio": "Guadalajara", "area_influencia": "Guadalajara", "estacion": "Oblatos", "simbolo": "OBL", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": False, "O3": True, "SO2": True, "NO2": True, "CO": True}},
-            {"municipio": "Tlajomulco de Zúñiga", "area_influencia": "Tlajomulco de Zúñiga y San Pedro Tlaquepaque", "estacion": "Santa Anita", "simbolo": "SAN", "nueva": True, "anio_inicio": 2024, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
-            {"municipio": "Tlajomulco de Zúñiga", "area_influencia": "Tlajomulco de Zúñiga, San Pedro Tlaquepaque y El Salto", "estacion": "Santa Fe", "simbolo": "SFE", "nueva": False, "anio_inicio": 2013, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
-            {"municipio": "Tonalá", "area_influencia": "Tonalá y Guadalajara", "estacion": "Loma Dorada", "simbolo": "LDO", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
-            {"municipio": "Zapopan", "area_influencia": "Zapopan, Guadalajara y San Pedro Tlaquepaque", "estacion": "Águilas", "simbolo": "AGU", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
-            {"municipio": "Zapopan", "area_influencia": "Zapopan y Guadalajara", "estacion": "Atemajac", "simbolo": "ATM", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": False, "O3": True, "SO2": True, "NO2": True, "CO": True}},
-            {"municipio": "Zapopan", "area_influencia": "Zapopan", "estacion": "Santa Margarita", "simbolo": "SMT", "nueva": True, "anio_inicio": 2024, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
-            {"municipio": "Zapopan", "area_influencia": "Zapopan y Guadalajara", "estacion": "Vallarta", "simbolo": "VAL", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
+            {"municipio": "Guadalajara", "area_influencia": "Guadalajara", "estacion": "Oblatos", "simbolo": "OBL", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": False, "PM25": False, "O3": True, "SO2": False, "NO2": True, "CO": True}},
+            {"municipio": "Tlajomulco de Zúñiga", "area_influencia": "Tlajomulco de Zúñiga y San Pedro Tlaquepaque", "estacion": "Santa Anita", "simbolo": "SAN", "nueva": True, "anio_inicio": 2024, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": False, "NO2": True, "CO": True}},
+            {"municipio": "Tlajomulco de Zúñiga", "area_influencia": "Tlajomulco de Zúñiga, San Pedro Tlaquepaque y El Salto", "estacion": "Santa Fe", "simbolo": "SFE", "nueva": False, "anio_inicio": 2013, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": False, "NO2": True, "CO": True}},
+            {"municipio": "Tonalá", "area_influencia": "Tonalá y Guadalajara", "estacion": "Loma Dorada", "simbolo": "LDO", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": False, "O3": True, "SO2": False, "NO2": True, "CO": True}},
+            {"municipio": "Zapopan", "area_influencia": "Zapopan, Guadalajara y San Pedro Tlaquepaque", "estacion": "Águilas", "simbolo": "AGU", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": False, "NO2": True, "CO": True}},
+            {"municipio": "Zapopan", "area_influencia": "Zapopan y Guadalajara", "estacion": "Atemajac", "simbolo": "ATM", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": False, "PM25": False, "O3": True, "SO2": False, "NO2": True, "CO": True}},
+            {"municipio": "Zapopan", "area_influencia": "Zapopan", "estacion": "Santa Margarita", "simbolo": "SMT", "nueva": True, "anio_inicio": 2024, "contaminantes": {"PM10": True, "PM25": False, "O3": True, "SO2": False, "NO2": True, "CO": True}},
+            {"municipio": "Zapopan", "area_influencia": "Zapopan y Guadalajara", "estacion": "Vallarta", "simbolo": "VAL", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": False, "NO2": True, "CO": False}},
         ],
         # Tabla 3: contaminante criterio y la NOM de salud aplicable a cada uno.
         "normas_nom": [
             {"contaminante": "Ozono", "simbolo": "O₃", "nom": "NOM-020-SSA1-2021"},
+            {"contaminante": "Dióxido de Nitrógeno", "simbolo": "NO₂", "nom": "NOM-023-SSA1-2021"},
             {"contaminante": "Monóxido de Carbono", "simbolo": "CO", "nom": "NOM-021-SSA1-2021"},
             {"contaminante": "Dióxido de azufre", "simbolo": "SO₂", "nom": "NOM-022-SSA1-2019"},
             {"contaminante": "Partículas (diámetro ≤ 10 μm)", "simbolo": "PM₁₀", "nom": "NOM-025-SSA1-2021"},
@@ -203,7 +207,7 @@ DATOS_POR_ANIO = {
         # Nota que explica por qué NO2 (medido por la red) no entra a la
         # evaluación anual de cumplimiento de NOM ni a la Tabla 3.
         "nota_no2": (
-            "La evaluación en este informe considera <b>O₃, PM₁₀, PM₂.₅, SO₂ y CO</b>. NO₂ fue excluido "
+            "La evaluación en este informe considera <b>O₃, PM₁₀, PM₂.₅, SO₂ y CO</b>. NO₂ y SO₂ fue excluido "
             "de la evaluación anual debido a la modernización de la red en 2024, ya que se reemplazaron "
             "los analizadores y no cumple con la suficiencia anual requerida por la NOM para su análisis."
         ),
@@ -578,7 +582,7 @@ def _seccion_introduccion(anio, estilos):
         "Instituto Nacional de Ecología y Cambio Climático (INECC).",
 
         "En este informe se analizan los contaminantes criterio monóxido de carbono (CO), dióxido de "
-        "nitrógeno (NO₂), dióxido de azufre (SO₂), ozono (O₃), partículas PM₁₀ y partículas PM₂.₅. Además, se presenta una "
+        "nitrógeno (NO₂), ozono (O₃), partículas PM₁₀ y partículas PM₂.₅. Además, se presenta una "
         "evaluación de la calidad del aire basada en el cumplimiento de las Normas Oficiales Mexicanas y "
         "en el Índice Aire y Salud, así como un análisis del comportamiento de los principales "
         f"contaminantes registrados en {anio}.",
@@ -598,11 +602,10 @@ def _seccion_simaj(anio, estilos, datos):
 
     texto = (
         "El Sistema de Monitoreo Atmosférico de Jalisco (SIMAJ) es la red estatal encargada de medir de "
-        "manera continua la calidad del aire. Su operación se concentra en el AMG, donde habita "
-        f"aproximadamente el {datos['porcentaje_poblacion_amg']} % de la población del estado "
-        f"({datos['poblacion_amg']} habitantes) ({datos['fuente_poblacion']}), por lo que representa la "
-        "zona con mayor exposición potencial a la contaminación atmosférica. La Imagen 1 muestra la "
-        "ubicación de las estaciones de monitoreo que conforman la red."
+        "manera continua la calidad del aire. Su operación se concentra en el AMG, donde se concentra "
+        f"aproximadamente el {datos['porcentaje_poblacion_amg']}% de la población del estado, por lo que "
+        "constituye el principal ámbito de cobertura del SIMAJ. La Figura 1 muestra la ubicación de las "
+        "estaciones de monitoreo que conforman la red."
     )
     story.append(Paragraph(texto, estilos["cuerpo"]))
 
@@ -618,8 +621,8 @@ def _seccion_simaj(anio, estilos, datos):
 
         story.append(Spacer(1, 6))
         story.append(KeepTogether([
+            Paragraph(datos["caption_imagen_red"], estilos["tabla_caption"]),
             img_reader,
-            Paragraph(datos["caption_imagen_red"], estilos["caption"]),
         ]))
     else:
         story.append(Paragraph(
@@ -653,7 +656,7 @@ def _seccion_simaj(anio, estilos, datos):
     story.append(Paragraph(
         "Para garantizar información confiable y comparable a nivel nacional, el SIMAJ utiliza equipos, "
         "procedimientos y criterios de calidad conforme a las Normas Oficiales Mexicanas para cada "
-        "contaminante: O₃ (NOM-036-SEMARNAT-1993), NOx (NOM-037-SEMARNAT-1993), CO (NOM-034-SEMARNAT-1993) "
+        "contaminante: O₃ (NOM-036-SEMARNAT-1993), NO₂ (NOM-037-SEMARNAT-1993), CO (NOM-034-SEMARNAT-1993) "
         "y SO₂ (NOM-038-SEMARNAT-1993). La instalación, operación y validez de las redes también cumplen "
         "con la NOM-156-SEMARNAT-2012 y las especificaciones de los Manuales SINAICA.",
         estilos["cuerpo"],
@@ -663,7 +666,7 @@ def _seccion_simaj(anio, estilos, datos):
 
 
 def _seccion_evaluacion_nom(estilos, datos):
-    story = [Paragraph("Evaluación de Normas Oficiales Mexicanas de calidad del aire", estilos["h2"])]
+    story = [Paragraph("Evaluación de la calidad del aire", estilos["h2"])]
 
     story.append(Paragraph(
         "La calidad del aire se evalúa mediante dos herramientas complementarias. La primera es el "
@@ -709,7 +712,7 @@ def _seccion_panorama_general(anio, estilos, datos):
 
     story.append(Paragraph(
         "Para presentar un panorama general de la calidad del aire en el AMG, se contabilizan los días "
-        "en los que todos los contaminantes criterio se mantuvieron dentro de las categorías Buena o "
+        "en los que todos los contaminantes criterio medidos en la estación se mantuvieron dentro de las categorías Buena o "
         "Aceptable del Índice Aire y Salud.",
         estilos["cuerpo"],
     ))
@@ -748,7 +751,7 @@ def _texto_panorama_general(anio, serie):
         porcentaje = round(abs(diferencia) / valor_anterior * 100)
         frase_comparacion = (
             f", lo que representa {abs(diferencia)} días {variacion} que en {anio_anterior}, "
-            f"equivalentes a un{'a disminución' if diferencia < 0 else ' incremento'} aproximado de {porcentaje} %"
+            f"equivalentes a un{'a disminución' if diferencia < 0 else ' incremento'} aproximado de {porcentaje}%"
         )
 
     return (
@@ -828,7 +831,7 @@ def _seccion_horas_categoria(anio, estilos, datos):
 
     story.append(KeepTogether([
         Paragraph(
-            "Figura 3. Horas del año según categoría de calidad del aire, por estación.",
+            "Figura 3. Horas del año según categoría del índice Aire y Salud, por estación.",
             estilos["tabla_caption"],
         ),
         _grafica_horas_categoria(horas),
@@ -881,8 +884,8 @@ def _texto_horas_categoria(anio, datos_estacion, orden_estaciones=ORDEN_ESTACION
         desfavorable_amg = amg.get("Mala", 0) + amg.get("Muy mala", 0) + amg.get("Extremadamente mala", 0)
         frase_amg = (
             " La última barra corresponde al AMG en conjunto, que en cada hora toma la categoría más "
-            f"desfavorable entre todas las estaciones: durante {anio}, {favorable_amg:.0f} % de las horas "
-            f"fue Buena o Aceptable y {desfavorable_amg:.0f} % fue Mala o peor."
+            f"desfavorable entre todas las estaciones: durante {anio}, {favorable_amg:.0f}% de las horas "
+            f"fue Buena o Aceptable y {desfavorable_amg:.0f}% fue Mala o peor."
         )
 
     suficientes = [f for f in filas if f[3] < UMBRAL_DI_SUFICIENTE]
@@ -897,9 +900,9 @@ def _texto_horas_categoria(anio, datos_estacion, orden_estaciones=ORDEN_ESTACION
 
     return (
         f"{frase_intro} Entre las estaciones con datos suficientes durante {anio}, {mejor[0]} registró "
-        f"la mayor proporción de horas en categoría Buena o Aceptable ({mejor[1]:.0f} % del año), "
+        f"la mayor proporción de horas en categoría Buena o Aceptable ({mejor[1]:.0f}% del año), "
         f"mientras que {peor[0]} presentó la mayor proporción de horas en categoría Mala o peor "
-        f"({peor[2]:.0f} % del año).{frase_incompletas}{frase_amg}"
+        f"({peor[2]:.0f}% del año).{frase_incompletas}{frase_amg}"
     )
 
 
@@ -935,7 +938,7 @@ def _grafica_horas_categoria(datos_estacion, orden_estaciones=ORDEN_ESTACIONES_H
                       strokeColor=colors.white, strokeWidth=0.6))
             if ancho_seg >= 22:  # solo se rotula si el segmento es lo bastante ancho
                 color_txt = NAVY if cat in ("Aceptable", "D.I.") else colors.white
-                d.add(String(x + ancho_seg / 2, y + fila_h / 2 - 2.6, f"{pct:.0f} %", fontName="Montserrat-Bold",
+                d.add(String(x + ancho_seg / 2, y + fila_h / 2 - 2.6, f"{pct:.0f}%", fontName="Montserrat-Bold",
                              fontSize=6.6, fillColor=color_txt, textAnchor="middle"))
             x += ancho_seg
 
@@ -968,24 +971,19 @@ def _seccion_monoxido_carbono(anio, estilos, datos):
     story = [PageBreak(), Paragraph("Monóxido de carbono (CO)", estilos["h2"])]
 
     story.append(Paragraph(
-        "El monóxido de carbono es un gas incoloro e inodoro, que se forma de manera natural en la atmósfera "
-        "mediante la oxidación de metano (CH₄), destacando que el monóxido de carbono se origina "
-        "principalmente por reacciones de combustión incompleta que contiene carbono, así como el carbono "
-        "proveniente del combustible aún no quemado. Siendo la combustión incompleta la reacción que genera "
-        "mayor emisión en la concentración del CO, producto de la combustión por gasolina, gas, carbón, madera "
-        "y/o combustóleo de los automóviles que no cuentan con un convertidor catalítico que permita reducir "
-        "las emisiones.",
+        "El CO es un gas incoloro, inodoro e insípido, altamente tóxico. Se produce  "
+        "principalmente por la combustión incompleta de combustibles fósiles, siendo las fuentes "
+        "más importantes los vehículos automotores, los calefactores, las estufas y las quemas no controladas."
+        "Cuando se inhala, el CO interfiere con el transporte de oxígeno en la sangre, ya que se une a la hemoglobina "
+        "con una afinidad mucho mayor que la del oxígeno. Esto puede provocar dolor de cabeza, "
+        "mareos, fatiga, confusión y, en altas concentraciones, puede llegar a causar la muerte."
+        "Los grupos más vulnerables son las personas con enfermedades cardiovasculares, las mujeres embarazadas, "
+        "los niños pequeños y los adultos mayores.",
         estilos["cuerpo"],
     ))
     story.append(Paragraph(
-        "Su fuente de emisión se genera por la quema incompleta de combustibles. Los automóviles son la "
-        "principal fuente de emisión.",
-        estilos["cuerpo"],
-    ))
-    story.append(Paragraph(
-        "Puede producir hipoxia en el ser humano, causando una deficiencia de oxígeno en las células y los "
-        "tejidos, así como riesgos en mortalidad por causas cardiovasculares, y la asociación a enfermedades "
-        "respiratorias como asma, bronquitis y neumonía (Secretaría de Salud NOM-021-SSA1-1993, 2020).",
+        "En el ambiente, el CO contribuye a la formación de ozono troposférico al reaccionar con otros contaminantes en "
+        "presencia de la radiación solar, aunque por sí mismo no se acumula de manera significativa a largo plazo.",
         estilos["cuerpo"],
     ))
     story.append(_esquema_co())
@@ -1097,7 +1095,7 @@ def _seccion_dioxido_nitrogeno(anio, estilos, datos):
         ],
         decimales=3, con_resultados=True,
         nota_final=(
-            "Como el registro cubre menos del 75 % de los días del año, estas comparaciones son solo de "
+            "Como el registro cubre menos del 75% de los días del año, estas comparaciones son solo de "
             "referencia y el cumplimiento de la NOM no se evalúa para este contaminante (D.I. en la Tabla 5)."
         ),
     )
@@ -1152,7 +1150,7 @@ def _texto_perfil_horario(anio, perfil, nombre, unidad, numero_figura, decimales
     txt = (
         f"Para cada hora del año se toma la concentración máxima de {nombre} entre las estaciones de la red, que "
         "representa al AMG, y se promedia por hora del día dentro de cada mes (se exigen al menos 6 días con "
-        "dato por hora y que el AMG tenga dato en al menos 75 % de las horas del mes). "
+        "dato por hora y que el AMG tenga dato en al menos 75% de las horas del mes). "
     )
     if faltan:
         txt += (
@@ -1188,13 +1186,12 @@ def _texto_perfil_no2(anio, perfil):
         anio, perfil, "NO₂", "ppm", "Figura 8",
         frase_patron="un patrón consistente con la actividad vehicular de la ciudad, principal fuente de este contaminante",
         nota_datos=(f"Las estaciones de la red iniciaron el registro de NO₂ hasta la segunda mitad de {anio}. "
-                    "Como el registro cubre menos del 75 % de los días del año, el cumplimiento de la NOM no se "
+                    "Como el registro cubre menos del 75% de los días del año, el cumplimiento de la NOM no se "
                     f"evalúa para este contaminante en {anio} (D.I. en la Tabla 5)."),
     )
 
 
 def _seccion_particulas_suspendidas(anio, estilos, datos):
-    from reportlab.platypus import Image as FlowImage
     story = [PageBreak(), Paragraph("Partículas suspendidas", estilos["h2"])]
     story.append(Paragraph(
         "Las partículas suspendidas son partículas sólidas o líquidas microscópicas que se encuentran en el "
@@ -1215,14 +1212,6 @@ def _seccion_particulas_suspendidas(anio, estilos, datos):
         "pueden cambiar su comportamiento y su tamaño.",
         estilos["cuerpo"],
     ))
-    ruta = IMG_DIR / "particulas_tamanos.png"
-    if ruta.exists():
-        ancho = CONTENT_WIDTH * 0.82
-        alto = ancho * 333 / 693
-        imagen = FlowImage(str(ruta), width=ancho, height=alto)
-        imagen.hAlign = "CENTER"
-        story.append(Spacer(1, 6))
-        story.append(imagen)
     return story
 
 
@@ -1253,15 +1242,15 @@ def _seccion_pm10(anio, estilos, datos):
         estilos["cuerpo"],
     ))
     story += _seccion_perfil_horario_mensual(
-        anio, estilos, datos, "PM10", "PM₁₀", "µg/m³", "Figura 15",
+        anio, estilos, datos, "PM10", "PM₁₀", "µg/m³", "Figura 11",
         texto=_texto_perfil_horario(
-            anio, (datos.get("perfil_horario") or {}).get("PM10"), "PM₁₀", "µg/m³", "Figura 15", decimales=0,
+            anio, (datos.get("perfil_horario") or {}).get("PM10"), "PM₁₀", "µg/m³", "Figura 11", decimales=0,
             frase_patron=("un patrón que suele asociarse con la actividad vehicular y con la menor dispersión "
                           "atmosférica de las primeras horas de la mañana y de la noche"),
         ),
     )
     story += _seccion_violines_mensuales(
-        anio, estilos, datos, "PM10", "PM₁₀", "µg/m³", "Figura 16",
+        anio, estilos, datos, "PM10", "PM₁₀", "µg/m³", "Figura 12",
         serie="NowCast, promedio ponderado de 12 horas",
         limites=[
             dict(valor=60, periodo="24 horas", color=NARANJA_SEMADET, dash=[3, 2], etiqueta="Límite 24 h (NOM)",
@@ -1274,7 +1263,7 @@ def _seccion_pm10(anio, estilos, datos):
                     "solo como referencia frente a la serie horaria NowCast."),
     )
     story += _seccion_mapa_dias_estaciones(
-        anio, estilos, datos, contaminante="PM10", nombre="PM₁₀", numero_figura="Figura 17",
+        anio, estilos, datos, contaminante="PM10", nombre="PM₁₀", numero_figura="Figura 13",
         nivel_titulo="h3", serie="promedio diario de 24 horas", salto_pagina=True, analisis_resumido=True,
     )
     return story
@@ -1303,15 +1292,15 @@ def _seccion_pm25(anio, estilos, datos):
         estilos["cuerpo"],
     ))
     story += _seccion_perfil_horario_mensual(
-        anio, estilos, datos, "PM2.5", "PM₂.₅", "µg/m³", "Figura 18",
+        anio, estilos, datos, "PM2.5", "PM₂.₅", "µg/m³", "Figura 14",
         texto=_texto_perfil_horario(
-            anio, (datos.get("perfil_horario") or {}).get("PM2.5"), "PM₂.₅", "µg/m³", "Figura 18", decimales=0,
+            anio, (datos.get("perfil_horario") or {}).get("PM2.5"), "PM₂.₅", "µg/m³", "Figura 14", decimales=0,
             frase_patron=("un patrón que suele asociarse con la actividad vehicular y con la menor dispersión "
                           "atmosférica de las primeras horas de la mañana y de la noche"),
         ),
     )
     story += _seccion_violines_mensuales(
-        anio, estilos, datos, "PM2.5", "PM₂.₅", "µg/m³", "Figura 19",
+        anio, estilos, datos, "PM2.5", "PM₂.₅", "µg/m³", "Figura 15",
         serie="NowCast, promedio ponderado de 12 horas",
         limites=[
             dict(valor=33, color=NARANJA_SEMADET, dash=[3, 2], etiqueta="Límite 24 h (NOM)",
@@ -1324,7 +1313,7 @@ def _seccion_pm25(anio, estilos, datos):
                     "solo como referencia frente a la serie horaria NowCast."),
     )
     story += _seccion_mapa_dias_estaciones(
-        anio, estilos, datos, contaminante="PM2.5", nombre="PM₂.₅", numero_figura="Figura 20",
+        anio, estilos, datos, contaminante="PM2.5", nombre="PM₂.₅", numero_figura="Figura 16",
         nivel_titulo="h3", serie="promedio diario de 24 horas",
     )
     return story
@@ -1359,7 +1348,7 @@ def _seccion_dioxido_azufre(anio, estilos, datos):
             estilos["cuerpo"],
         ))
     story += _seccion_mapa_dias_estaciones(
-        anio, estilos, datos, contaminante="SO2", nombre="SO₂", numero_figura="Figura 11",
+        anio, estilos, datos, contaminante="SO2", nombre="SO₂", numero_figura="Figura 8",
         nivel_titulo="h3", serie="máximo horario del día",
     )
     return story
@@ -1428,26 +1417,24 @@ def _seccion_ozono(anio, estilos, datos):
     story.append(Spacer(1, 4))
     story.append(_esquema_o3())
     story += _seccion_perfil_horario_mensual(
-        anio, estilos, datos, "O3", "O₃", "ppm", "Figura 12",
+        anio, estilos, datos, "O3", "O₃", "ppm", "Figura 8",
         texto=_texto_perfil_horario(
-            anio, (datos.get("perfil_horario") or {}).get("O3"), "O₃", "ppm", "Figura 12",
+            anio, (datos.get("perfil_horario") or {}).get("O3"), "O₃", "ppm", "Figura 8",
             frase_patron=("un patrón consistente con su formación fotoquímica, que requiere radiación solar y por eso "
                           "se intensifica en las horas de mayor insolación"),
             limite=0.090, texto_limite="límite horario de la NOM (0.090 ppm)",
         ),
     )
     story += _seccion_violines_mensuales(
-        anio, estilos, datos, "O3", "O₃", "ppm", "Figura 13", serie="promedio móvil de 8 horas",
+        anio, estilos, datos, "O3", "O₃", "ppm", "Figura 9", serie="valor horario",
         limites=[
-            dict(valor=0.060, color=AZUL_SEMADET, dash=[3, 2], etiqueta="Límite 8 h (NOM)",
-                 texto="límite de 8 horas establecido por la NOM (0.060 ppm)"),
-            dict(valor=0.090, color=GRIS_SEMADET, dash=None, etiqueta="Límite anual (NOM)",
-                 texto="límite anual de la NOM (0.090 ppm, máximo de 1 hora)"),
+            dict(valor=0.090, color=NARANJA_SEMADET, dash=[3, 2], etiqueta="Límite 1 h (NOM)",
+                 texto="límite horario de la NOM (0.090 ppm)"),
         ],
         decimales=3, con_resultados=True,
     )
     story += _seccion_mapa_dias_estaciones(
-        anio, estilos, datos, contaminante="O3", nombre="O₃", numero_figura="Figura 14",
+        anio, estilos, datos, contaminante="O3", nombre="O₃", numero_figura="Figura 10",
         nivel_titulo="h3", serie="máximo horario del día",
     )
     return story
@@ -1603,7 +1590,7 @@ def _seccion_violines_mensuales(anio, estilos, datos, contaminante, nombre, unid
         f"horarias de {nombre} en el AMG ({serie}; en cada hora se toma el valor más alto entre las "
         "estaciones). El contorno del violín indica qué tan frecuentes son los distintos valores; la caja "
         "abarca del primer al tercer cuartil, la línea blanca es la mediana y el punto blanco, la media. "
-        "Solo se grafican los meses con al menos 75 % de sus horas con dato."
+        "Solo se grafican los meses con al menos 75% de sus horas con dato."
         + (" Sobre cada violín se indica la clave de la estación que registró el valor más alto de ese mes."
            if any(v.get("estacion_max") for v in validos) else "")
     )
@@ -1875,11 +1862,21 @@ def _seccion_mapa_dias_estaciones(anio, estilos, datos, contaminante=None, nombr
         estilos["cuerpo"],
     ))
 
+    equipo = None
+    if contaminante:
+        clave_capacidad = CAPACIDAD_POR_CONTAMINANTE[contaminante]
+        equipo = {e["simbolo"]: e["contaminantes"].get(clave_capacidad, True) for e in datos["estaciones"]}
+
+    texto_puntos = (
+        "Los puntos grises claros marcados con ¤ indican estaciones que no cuentan con el equipo para medir "
+        f"{nombre}. Los puntos grises oscuros indican estaciones con el equipo, pero sin datos en ese año."
+        if equipo and not all(equipo.values())
+        else "Los puntos grises indican estaciones sin datos en ese año."
+    )
     story.append(Paragraph(
-        "Las burbujas con borde punteado corresponden a estaciones que no alcanzaron el 75 % de días con "
+        "Las burbujas con borde punteado corresponden a estaciones que no alcanzaron el 75% de días con "
         "dato en el año (por ejemplo, las que iniciaron operaciones o estuvieron fuera de servicio), por lo "
-        "que su total no cubre el año completo y no es comparable con el de las demás. Los puntos grises "
-        "indican estaciones sin datos en ese año.",
+        f"que su total no cubre el año completo y no es comparable con el de las demás. {texto_puntos}",
         estilos["cuerpo"],
     ))
 
@@ -1894,9 +1891,9 @@ def _seccion_mapa_dias_estaciones(anio, estilos, datos, contaminante=None, nombr
             f"{orden_anios[-1]}–{orden_anios[0]}.",
             estilos["tabla_caption"],
         ),
-        MosaicoMapas(mapas, orden_anios),
+        MosaicoMapas(mapas, orden_anios, equipo=equipo),
         Spacer(1, 1),
-        _leyenda_mapa_dias(),
+        _leyenda_mapa_dias(con_sin_equipo=bool(equipo and not all(equipo.values()))),
     ]))
     nombres = {e["simbolo"]: e["estacion"] for e in datos["estaciones"]}
     story.append(Spacer(1, 10))
@@ -2071,7 +2068,7 @@ def _analisis_mapas_dias_resumido(anio, mapas, nombres, orden_anios, nombre_pol,
             if previas:
                 txt += (f" Por su parte, {_lista_es([nom(e) for e in previas])} "
                         f"{'presenta' if len(previas) == 1 else 'presentan'} datos parciales, pues no alcanzaron el "
-                        "75 % de días con dato del año, por lo que sus cifras no son comparables con las de las demás")
+                        "75% de días con dato del año, por lo que sus cifras no son comparables con las de las demás")
                 if recientes:
                     txt += (f"; a ellas se suman {_lista_es([nom(e) for e in recientes])}, {incorporacion}tampoco "
                             f"alcanzaron a acumular un año completo de operación {rango}.")
@@ -2151,7 +2148,7 @@ def _analisis_mapas_dias_detallado(anio, mapas, nombres, orden_anios, nombre_pol
         if previas:
             txt += (
                 f" Por su parte, {_lista_es([nom(e) for e in previas])} "
-                f"{'presenta' if len(previas) == 1 else 'presentan'} datos parciales, pues no alcanzaron el 75 % "
+                f"{'presenta' if len(previas) == 1 else 'presentan'} datos parciales, pues no alcanzaron el 75% "
                 "de días con dato del año, por lo que sus cifras no son comparables con las de las demás"
             )
             if recientes:
@@ -2169,12 +2166,12 @@ def _analisis_mapas_dias_detallado(anio, mapas, nombres, orden_anios, nombre_pol
         tot_dias = sum(mapas[anio][e]["dias"] for e in parciales)
         tot_validos = sum(validos.values())
         parrafos.append(
-            f"En {anio} ninguna estación alcanzó el 75 % de días con dato de {nombre_pol}, por lo que las cifras "
+            f"En {anio} ninguna estación alcanzó el 75% de días con dato de {nombre_pol}, por lo que las cifras "
             f"son parciales ({min(validos.values())} a {max(validos.values())} días con dato por estación). Aun "
             f"así, {nom(orden[0])} acumuló el mayor número de días con calidad Buena o Aceptable "
             f"({mapas[anio][orden[0]]['dias']} de {validos[orden[0]]} días con dato) y {nom(orden[-1])} el menor "
             f"({mapas[anio][orden[-1]]['dias']} de {validos[orden[-1]]}). En conjunto, {tot_dias} de {tot_validos} "
-            f"días con dato ({100 * tot_dias / tot_validos:.1f} %) tuvieron calidad Buena o Aceptable."
+            f"días con dato ({100 * tot_dias / tot_validos:.1f}%) tuvieron calidad Buena o Aceptable."
         )
 
     if partes["comparacion"]:
@@ -2224,7 +2221,7 @@ def _analisis_mapas_dias(anio, mapas, nombres, orden_anios, nombre_pol=None, nue
             txt += (
                 f" Por su parte, {_lista_es([nom(e) for e in parciales_previas])} "
                 f"{'presenta' if len(parciales_previas) == 1 else 'presentan'} datos parciales, pues no "
-                "alcanzaron el 75 % de días con dato del año, por lo que sus cifras no son comparables con las "
+                "alcanzaron el 75% de días con dato del año, por lo que sus cifras no son comparables con las "
                 "de las demás."
             )
         if parciales_nuevas:
@@ -2253,7 +2250,7 @@ def _analisis_mapas_dias(anio, mapas, nombres, orden_anios, nombre_pol=None, nue
         if parciales:
             txt += (
                 f" {_lista_es(sorted(parciales))} aparecen con datos parciales ({min(parciales.values())} a "
-                f"{max(parciales.values())} días), pues no alcanzaron el 75 % de días con dato del año; por ello "
+                f"{max(parciales.values())} días), pues no alcanzaron el 75% de días con dato del año; por ello "
                 "sus cifras no son comparables con las de las demás."
             )
         parrafos.append(txt)
@@ -2265,7 +2262,7 @@ def _analisis_mapas_dias(anio, mapas, nombres, orden_anios, nombre_pol=None, nue
             tot_dias = sum(v["dias"] for v in parc.values())
             tot_validos = sum(v["validos"] for v in parc.values())
             txt = (
-                f"En {anio} ninguna estación alcanzó el 75 % de días con dato"
+                f"En {anio} ninguna estación alcanzó el 75% de días con dato"
                 + (f" de {nombre_pol}" if nombre_pol else "")
                 + f", por lo que las cifras son parciales ({min(v['validos'] for v in parc.values())} a "
                 f"{max(v['validos'] for v in parc.values())} días con dato por estación). Aun así, "
@@ -2273,7 +2270,7 @@ def _analisis_mapas_dias(anio, mapas, nombres, orden_anios, nombre_pol=None, nue
                 f"Aceptable ({parc[orden[0]]['dias']} de {parc[orden[0]]['validos']} días con dato) y "
                 f"{nombres.get(orden[-1], orden[-1])} ({orden[-1]}) el menor ({parc[orden[-1]]['dias']} de "
                 f"{parc[orden[-1]]['validos']}). En conjunto, {tot_dias} de {tot_validos} días con dato "
-                f"({100 * tot_dias / tot_validos:.1f} %) tuvieron calidad Buena o Aceptable."
+                f"({100 * tot_dias / tot_validos:.1f}%) tuvieron calidad Buena o Aceptable."
             )
             parrafos.append(txt)
 
@@ -2433,7 +2430,7 @@ def _separar_burbujas(posiciones, radios, lado, max_desp=9.0, iteraciones=40):
     return pos
 
 
-def _mosaico_mapas_dias(mapas, orden_anios, n_cols=3, con_imagen=True):
+def _mosaico_mapas_dias(mapas, orden_anios, n_cols=3, con_imagen=True, equipo=None):
     """Mosaico de mapas (uno por año) sobre un mapa base de calles: una burbuja
     por estación, con radio creciente con los días Buena/Aceptable y escala
     común a todos los paneles."""
@@ -2492,9 +2489,16 @@ def _mosaico_mapas_dias(mapas, orden_anios, n_cols=3, con_imagen=True):
             info = datos_anio[est]
             x, y = posiciones[est]
             if info["dias"] == 0:
-                d.add(Circle(ox + x, oy + y, 2.6, fillColor=colors.HexColor("#8A9BA3"), strokeColor=colors.white, strokeWidth=0.5))
-                d.add(String(ox + x + 4, oy + y - 1.8, est, fontName="Montserrat-Bold",
-                             fontSize=5.4, fillColor=colors.HexColor("#5E7079")))
+                sin_equipo = equipo is not None and not equipo.get(est, True)
+                if sin_equipo:
+                    d.add(Rect(ox + x - 2.2, oy + y - 2.2, 4.4, 4.4, fillColor=COLOR_NOM_SIN_EQUIPO,
+                              strokeColor=colors.HexColor("#B7C2C7"), strokeWidth=0.5))
+                    d.add(String(ox + x + 5, oy + y - 1.8, f"{est} ¤", fontName="Montserrat-Bold",
+                                 fontSize=5.4, fillColor=colors.HexColor("#B7C2C7")))
+                else:
+                    d.add(Circle(ox + x, oy + y, 2.6, fillColor=colors.HexColor("#8A9BA3"), strokeColor=colors.white, strokeWidth=0.5))
+                    d.add(String(ox + x + 4, oy + y - 1.8, est, fontName="Montserrat-Bold",
+                                 fontSize=5.4, fillColor=colors.HexColor("#5E7079")))
                 continue
             c = Circle(ox + x, oy + y, radios[est], fillColor=COLOR_BURBUJA, strokeColor=colors.white, strokeWidth=0.7)
             c.fillOpacity = 0.78
@@ -2519,10 +2523,10 @@ class MosaicoMapas(Flowable):
     era lo que lo hacía pesar decenas de MB, y la calidad es idéntica.
     'dibujo_completo' (con la imagen dentro del dibujo) se usa para el Word."""
 
-    def __init__(self, mapas, orden_anios):
+    def __init__(self, mapas, orden_anios, equipo=None):
         super().__init__()
-        self.dibujo_vectorial = _mosaico_mapas_dias(mapas, orden_anios, con_imagen=False)
-        self.dibujo_completo = _mosaico_mapas_dias(mapas, orden_anios, con_imagen=True)
+        self.dibujo_vectorial = _mosaico_mapas_dias(mapas, orden_anios, con_imagen=False, equipo=equipo)
+        self.dibujo_completo = _mosaico_mapas_dias(mapas, orden_anios, con_imagen=True, equipo=equipo)
         self.width, self.height = self.dibujo_vectorial.width, self.dibujo_vectorial.height
 
     def wrap(self, ancho_disponible, alto_disponible):
@@ -2536,7 +2540,7 @@ class MosaicoMapas(Flowable):
         renderPDF.draw(self.dibujo_vectorial, self.canv, 0, 0)
 
 
-def _leyenda_mapa_dias():
+def _leyenda_mapa_dias(con_sin_equipo=False):
     fuente, tam = "Montserrat", 8.2
     d = Drawing(CONTENT_WIDTH, 26)
     d.add(String(0, 0, "Mapa base: © colaboradores de OpenStreetMap", fontName="Montserrat",
@@ -2554,12 +2558,18 @@ def _leyenda_mapa_dias():
     c2.fillOpacity = 0.5
     c2.strokeDashArray = [2.2, 1.6]
     d.add(c2)
-    t2 = "Menos del 75 % de días con dato"
+    t2 = "Menos del 75% de días con dato"
     d.add(String(x + 15, 16, t2, fontName=fuente, fontSize=tam, fillColor=TEXT))
     x += 15 + pdfmetrics.stringWidth(t2, fuente, tam) + 16
 
     d.add(Circle(x + 4, 19, 2.6, fillColor=colors.HexColor("#8A9BA3"), strokeColor=None))
-    d.add(String(x + 12, 16, "Sin datos", fontName=fuente, fontSize=tam, fillColor=TEXT))
+    t3 = "Sin datos"
+    d.add(String(x + 12, 16, t3, fontName=fuente, fontSize=tam, fillColor=TEXT))
+    x += 12 + pdfmetrics.stringWidth(t3, fuente, tam) + 16
+
+    if con_sin_equipo:
+        d.add(Rect(x + 1.8, 16.8, 4.4, 4.4, fillColor=COLOR_NOM_SIN_EQUIPO, strokeColor=colors.HexColor("#B7C2C7"), strokeWidth=0.5))
+        d.add(String(x + 12, 16, "¤ Sin equipo", fontName=fuente, fontSize=tam, fillColor=TEXT))
     return d
 
 
@@ -2569,7 +2579,7 @@ def _seccion_cumplimiento_nom(anio, estilos, datos):
     story.append(Paragraph(
         "Para cada estación de la red se compara el valor estadístico correspondiente (percentil 99, "
         "promedio o máximo, según lo que establece cada Norma Oficial Mexicana) contra el límite "
-        f"vigente para {anio}. Cuando una estación no alcanza el 75&nbsp;% de días válidos en el año, "
+        f"vigente para {anio}. Cuando una estación no alcanza el 75% de días válidos en el año, "
         "el resultado se reporta como dato insuficiente (D.I.).",
         estilos["cuerpo"],
     ))
@@ -2588,7 +2598,7 @@ def _seccion_cumplimiento_nom(anio, estilos, datos):
         Spacer(1, 8),
         _leyenda_cumplimiento_nom(),
         Paragraph(
-            "D.I.: la estación no alcanzó el 75&nbsp;% de días válidos requerido en el año. "
+            "D.I.: la estación no alcanzó el 75% de días válidos requerido en el año. "
             "FO: la estación cuenta con el equipo pero permaneció fuera de operación todo el año. "
             "¤: la estación no mide ese contaminante.",
             estilos["nota"],
@@ -3075,8 +3085,10 @@ def _construir_story(anio, estilos, datos, con_indice=True):
     story += _seccion_mapa_dias_estaciones(anio, estilos, datos)
     story += _seccion_cumplimiento_nom(anio, estilos, datos)
     story += _seccion_monoxido_carbono(anio, estilos, datos)
-    story += _seccion_dioxido_nitrogeno(anio, estilos, datos)
-    story += _seccion_dioxido_azufre(anio, estilos, datos)
+    if datos.get("incluir_no2", True):
+        story += _seccion_dioxido_nitrogeno(anio, estilos, datos)
+    if datos.get("incluir_so2", True):
+        story += _seccion_dioxido_azufre(anio, estilos, datos)
     story += _seccion_ozono(anio, estilos, datos)
     story += _seccion_particulas_suspendidas(anio, estilos, datos)
     story += _seccion_pm10(anio, estilos, datos)

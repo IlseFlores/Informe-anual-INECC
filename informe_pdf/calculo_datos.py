@@ -834,7 +834,7 @@ def calcular_resumen_anual(ruta_excel, estacion="AMG"):
     violines_mensuales = {
         "CO": calcular_violines_mensuales(dfh, "CO", suavizado=rolling_8h),
         "NO2": calcular_violines_mensuales(dfh, "NO2"),
-        "O3": calcular_violines_mensuales(dfh, "O3", suavizado=rolling_8h),
+        "O3": calcular_violines_mensuales(dfh, "O3"),
         # PM10: NowCast (promedio ponderado de 12 h) calculado sobre la serie del AMG
         "PM10": calcular_violines_mensuales(
             dfh, "PM10",
