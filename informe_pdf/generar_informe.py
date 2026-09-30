@@ -35,6 +35,7 @@ DATOS_POR_ANIO cuando están disponibles -- ver _datos_del_anio().
 import argparse
 import io
 import json
+import re
 import unicodedata
 from pathlib import Path
 
@@ -48,13 +49,39 @@ from reportlab.lib.units import cm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
-    Image, KeepTogether, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
+    Image, KeepTogether, PageBreak, Paragraph as _ParagrafoBase, SimpleDocTemplate, Spacer, Table, TableStyle,
 )
 from reportlab.lib.utils import ImageReader
 from reportlab.graphics.shapes import Drawing, Circle, Line, Rect, String, Group
 from reportlab.graphics import renderPDF
 from reportlab.platypus.flowables import Flowable
 from reportlab.platypus.tableofcontents import TableOfContents
+
+# Los textos del informe escriben subíndices como dígitos Unicode ya
+# subindexados (ej. "PM₂.₅", con ₂ = U+2082 y ₅ = U+2085), y esos dígitos ya
+# se ven bien tal cual. El único problema es el "." de en medio (PM₂.₅,
+# PM₀.₁): al ser un punto normal, se ve grande junto a dígitos tan chicos --
+# parece un símbolo de grados, sobre todo en texto grande/negrita. El arreglo
+# es encoger SOLO ese punto (sin tocar los dígitos ni su posición) con un
+# tamaño de fuente proporcional al del párrafo. Paragraph() se envuelve aquí
+# para hacerlo automáticamente, sin tocar cada f-string del archivo uno por
+# uno.
+_PATRON_SUBINDICE_PUNTO = re.compile(r"([₀-₉]+)\.([₀-₉]+)")
+_TAM_PARRAFO_PREDETERMINADO = 10.3
+
+
+def _arreglar_subindices_con_punto(texto, tam_punto):
+    def reemplazo(m):
+        return f'{m.group(1)}<font size="{tam_punto:.1f}">.</font>{m.group(2)}'
+    return _PATRON_SUBINDICE_PUNTO.sub(reemplazo, texto)
+
+
+def Paragraph(texto, *args, **kwargs):
+    if isinstance(texto, str) and _PATRON_SUBINDICE_PUNTO.search(texto):
+        estilo = kwargs.get("style") or (args[0] if args else None)
+        tam_base = getattr(estilo, "fontSize", None) or _TAM_PARRAFO_PREDETERMINADO
+        texto = _arreglar_subindices_con_punto(texto, tam_base * 0.45)
+    return _ParagrafoBase(texto, *args, **kwargs)
 
 BASE_DIR = Path(__file__).resolve().parent
 FONTS_DIR = BASE_DIR / "assets" / "fonts"
@@ -153,6 +180,7 @@ DATOS_POR_ANIO = {
                 ("Karen de la Cabada Ruíz", "Directora General de Calidad del Aire"),
                 ("Elizabeth Duran Chávez", "Directora de Gestión de la Calidad del Aire"),
                 ("Nayeli Areli Perez Padilla", "Jefe de Centro Oficial de Medición"),
+                ("Beatríz Rodríguez Perez", "Coordinador Especializado"),
                 ("Ilse Regina Flores Reyes", "Técnico de Escuadrón Verde"),
             ],
             "equipo": [],
@@ -181,20 +209,29 @@ DATOS_POR_ANIO = {
         # del Informe Nacional de Calidad del Aire (INECC); Oblatos y Atemajac
         # no cuentan con equipo para PM2.5.
         "estaciones": [
-            {"municipio": "San Pedro Tlaquepaque", "area_influencia": "San Pedro Tlaquepaque y Guadalajara", "estacion": "Tlaquepaque", "simbolo": "TLA", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": False, "O3": True, "SO2": True, "NO2": True, "CO": False}},
+            {"municipio": "San Pedro Tlaquepaque", "area_influencia": "San Pedro Tlaquepaque y Guadalajara", "estacion": "Tlaquepaque", "simbolo": "TLA", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
             {"municipio": "El Salto", "area_influencia": "El Salto, San Pedro Tlaquepaque y Tlajomulco de Zúñiga", "estacion": "Pintas", "simbolo": "PIN", "nueva": False, "anio_inicio": 2011, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
             {"municipio": "Guadalajara", "area_influencia": "Guadalajara", "estacion": "Centro", "simbolo": "CEN", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
-            {"municipio": "Guadalajara", "area_influencia": "Zapopan y Guadalajara", "estacion": "Country", "simbolo": "COU", "nueva": True, "anio_inicio": 2024, "contaminantes": {"PM10": True, "PM25": False, "O3": True, "SO2": False, "NO2": False, "CO": False}},
+            {"municipio": "Guadalajara", "area_influencia": "Zapopan y Guadalajara", "estacion": "Country", "simbolo": "COU", "nueva": True, "anio_inicio": 2024, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": False, "NO2": True, "CO": True}},
             {"municipio": "Guadalajara", "area_influencia": "Guadalajara y San Pedro Tlaquepaque", "estacion": "Miravalle", "simbolo": "MIR", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
-            {"municipio": "Guadalajara", "area_influencia": "Guadalajara", "estacion": "Oblatos", "simbolo": "OBL", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": False, "PM25": False, "O3": True, "SO2": False, "NO2": True, "CO": True}},
+            {"municipio": "Guadalajara", "area_influencia": "Guadalajara", "estacion": "Oblatos", "simbolo": "OBL", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
             {"municipio": "Tlajomulco de Zúñiga", "area_influencia": "Tlajomulco de Zúñiga y San Pedro Tlaquepaque", "estacion": "Santa Anita", "simbolo": "SAN", "nueva": True, "anio_inicio": 2024, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": False, "NO2": True, "CO": True}},
-            {"municipio": "Tlajomulco de Zúñiga", "area_influencia": "Tlajomulco de Zúñiga, San Pedro Tlaquepaque y El Salto", "estacion": "Santa Fe", "simbolo": "SFE", "nueva": False, "anio_inicio": 2013, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": False, "NO2": True, "CO": True}},
-            {"municipio": "Tonalá", "area_influencia": "Tonalá y Guadalajara", "estacion": "Loma Dorada", "simbolo": "LDO", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": False, "O3": True, "SO2": False, "NO2": True, "CO": True}},
+            {"municipio": "Tlajomulco de Zúñiga", "area_influencia": "Tlajomulco de Zúñiga, San Pedro Tlaquepaque y El Salto", "estacion": "Santa Fe", "simbolo": "SFE", "nueva": False, "anio_inicio": 2013, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
+            {"municipio": "Tonalá", "area_influencia": "Tonalá y Guadalajara", "estacion": "Loma Dorada", "simbolo": "LDO", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": False, "NO2": True, "CO": True}},
             {"municipio": "Zapopan", "area_influencia": "Zapopan, Guadalajara y San Pedro Tlaquepaque", "estacion": "Águilas", "simbolo": "AGU", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": False, "NO2": True, "CO": True}},
-            {"municipio": "Zapopan", "area_influencia": "Zapopan y Guadalajara", "estacion": "Atemajac", "simbolo": "ATM", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": False, "PM25": False, "O3": True, "SO2": False, "NO2": True, "CO": True}},
-            {"municipio": "Zapopan", "area_influencia": "Zapopan", "estacion": "Santa Margarita", "simbolo": "SMT", "nueva": True, "anio_inicio": 2024, "contaminantes": {"PM10": True, "PM25": False, "O3": True, "SO2": False, "NO2": True, "CO": True}},
-            {"municipio": "Zapopan", "area_influencia": "Zapopan y Guadalajara", "estacion": "Vallarta", "simbolo": "VAL", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": False, "NO2": True, "CO": False}},
+            {"municipio": "Zapopan", "area_influencia": "Zapopan y Guadalajara", "estacion": "Atemajac", "simbolo": "ATM", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": False, "NO2": True, "CO": True}},
+            {"municipio": "Zapopan", "area_influencia": "Zapopan", "estacion": "Santa Margarita", "simbolo": "SMT", "nueva": True, "anio_inicio": 2024, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": False, "NO2": True, "CO": True}},
+            {"municipio": "Zapopan", "area_influencia": "Zapopan y Guadalajara", "estacion": "Vallarta", "simbolo": "VAL", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
         ],
+        # Excepciones confirmadas a mano: (estación, contaminante -- nombre de
+        # columna de calculo_datos.py) que NO se deben sobreescribir con la
+        # cobertura calculada del año, aunque esta última no salga en la lista
+        # de "ambiguos" (0 en toda la red). Úsalo cuando SÍ hay equipo
+        # instalado pero no produjo ni una lectura válida en el año (se ve
+        # igual que "sin equipo" en los datos, pero no lo es).
+        "equipo_confirmado_manual": {
+            "COU": ["NO2"],  # el equipo existe; 2024 fue su primer año y no generó lecturas válidas
+        },
         # Tabla 3: contaminante criterio y la NOM de salud aplicable a cada uno.
         "normas_nom": [
             {"contaminante": "Ozono", "simbolo": "O₃", "nom": "NOM-020-SSA1-2021"},
@@ -276,6 +313,10 @@ def _datos_del_anio(anio):
             f"Años disponibles: {anios_disp}."
         )
     datos = dict(DATOS_POR_ANIO[anio])
+    # Copia profunda de "estaciones" (y su "contaminantes" anidado): más abajo
+    # se puede sobreescribir por estación con la cobertura calculada del año,
+    # y no queremos mutar la constante DATOS_POR_ANIO en el proceso.
+    datos["estaciones"] = [dict(e, contaminantes=dict(e["contaminantes"])) for e in datos.get("estaciones", [])]
 
     historico = _cargar_resumen_historico()
     if str(anio) not in historico:
@@ -326,6 +367,27 @@ def _datos_del_anio(anio):
                          "dias_buena_aceptable_estaciones_contaminante"):
             datos[clave] = valor
 
+    # Tabla 2 (equipo por estación): la cobertura calculada del año manda,
+    # contaminante por contaminante, EXCEPTO los que salieron en 0 horas para
+    # toda la red (ver calcular_cobertura_equipo en calculo_datos.py) -- esos
+    # se quedan con el valor editorial de DATOS_POR_ANIO porque el dato del
+    # año no permite distinguir "sin equipo" de "toda la red fuera de
+    # operación", y eso solo se puede confirmar a mano.
+    cobertura_equipo = entrada_anio.get("cobertura_equipo")
+    if cobertura_equipo:
+        ambiguos = set(entrada_anio.get("contaminantes_ambiguos", []))
+        confirmados_manual = datos.get("equipo_confirmado_manual", {})
+        for estacion in datos.get("estaciones", []):
+            cobertura_est = cobertura_equipo.get(estacion["simbolo"])
+            if not cobertura_est:
+                continue
+            excepciones_estacion = set(confirmados_manual.get(estacion["simbolo"], []))
+            for pol_datos, tiene_equipo in cobertura_est.items():
+                if pol_datos in ambiguos or pol_datos in excepciones_estacion:
+                    continue
+                clave_contaminantes = CAPACIDAD_POR_CONTAMINANTE.get(pol_datos, pol_datos)
+                estacion["contaminantes"][clave_contaminantes] = tiene_equipo
+
     return datos
 
 
@@ -361,6 +423,10 @@ def _estilos():
         "bibliografia": ParagraphStyle(
             "bibliografia", fontName="Montserrat", fontSize=9.2, leading=13.5, textColor=TEXT,
             alignment=TA_LEFT, leftIndent=14, bulletIndent=0, firstLineIndent=0, spaceAfter=7, splitLongWords=1,
+        ),
+        "hallazgo": ParagraphStyle(
+            "hallazgo", fontName="Montserrat", fontSize=10.3, leading=16.5, textColor=TEXT,
+            alignment=TA_JUSTIFY, leftIndent=14, bulletIndent=0, firstLineIndent=0, spaceAfter=10,
         ),
         "h3": ParagraphStyle(
             "h3", fontName="Montserrat-Bold", fontSize=11.5, leading=15,
@@ -952,18 +1018,21 @@ def _leyenda_categorias_ias():
     gap_items = 16
     alto = 14
 
+    etiquetas = {"D.I.": "D.I. (dato insuficiente)"}
+
     items = []
     x = 0.0
     for cat in CAT_ORDEN_HORAS:
-        ancho_texto = pdfmetrics.stringWidth(cat, fuente, tam)
-        items.append((cat, x, ancho_texto))
+        etiqueta = etiquetas.get(cat, cat)
+        ancho_texto = pdfmetrics.stringWidth(etiqueta, fuente, tam)
+        items.append((cat, etiqueta, x, ancho_texto))
         x += swatch + gap_swatch_texto + ancho_texto + gap_items
     ancho_total = x - gap_items
 
     d = Drawing(ancho_total, alto)
-    for cat, x0, ancho_texto in items:
+    for cat, etiqueta, x0, ancho_texto in items:
         d.add(Rect(x0, alto / 2 - swatch / 2, swatch, swatch, fillColor=COLOR_CATEGORIA_IAS[cat], strokeColor=None))
-        d.add(String(x0 + swatch + gap_swatch_texto, alto / 2 - 3, cat, fontName=fuente, fontSize=tam, fillColor=TEXT))
+        d.add(String(x0 + swatch + gap_swatch_texto, alto / 2 - 3, etiqueta, fontName=fuente, fontSize=tam, fillColor=TEXT))
     return d
 
 
@@ -1251,7 +1320,7 @@ def _seccion_pm10(anio, estilos, datos):
     )
     story += _seccion_violines_mensuales(
         anio, estilos, datos, "PM10", "PM₁₀", "µg/m³", "Figura 12",
-        serie="NowCast, promedio ponderado de 12 horas",
+        serie="promedio móvil de 24 horas",
         limites=[
             dict(valor=60, periodo="24 horas", color=NARANJA_SEMADET, dash=[3, 2], etiqueta="Límite 24 h (NOM)",
                  texto="límite de 24 horas de la NOM (60 µg/m³)"),
@@ -1259,8 +1328,6 @@ def _seccion_pm10(anio, estilos, datos):
                  texto="límite anual de la NOM (28 µg/m³)"),
         ],
         decimales=0, con_resultados=True, salto_pagina=True, resultados_narrativo=True,
-        nota_final=("Los límites de la NOM se definen para promedios de 24 horas y anuales; aquí se muestran "
-                    "solo como referencia frente a la serie horaria NowCast."),
     )
     story += _seccion_mapa_dias_estaciones(
         anio, estilos, datos, contaminante="PM10", nombre="PM₁₀", numero_figura="Figura 13",
@@ -1301,7 +1368,7 @@ def _seccion_pm25(anio, estilos, datos):
     )
     story += _seccion_violines_mensuales(
         anio, estilos, datos, "PM2.5", "PM₂.₅", "µg/m³", "Figura 15",
-        serie="NowCast, promedio ponderado de 12 horas",
+        serie="promedio móvil de 24 horas",
         limites=[
             dict(valor=33, color=NARANJA_SEMADET, dash=[3, 2], etiqueta="Límite 24 h (NOM)",
                  texto="límite de 24 horas de la NOM (33 µg/m³)"),
@@ -1309,8 +1376,6 @@ def _seccion_pm25(anio, estilos, datos):
                  texto="límite anual de la NOM (10 µg/m³)"),
         ],
         decimales=0, con_resultados=True,
-        nota_final=("Los límites de la NOM se definen para promedios de 24 horas y anuales; aquí se muestran "
-                    "solo como referencia frente a la serie horaria NowCast."),
     )
     story += _seccion_mapa_dias_estaciones(
         anio, estilos, datos, contaminante="PM2.5", nombre="PM₂.₅", numero_figura="Figura 16",
@@ -1367,6 +1432,184 @@ REFERENCIAS_BIBLIOGRAFICAS = [
         'Comisión Ambiental de la Megalópolis. (2020, 28 de mayo). Índice Aire y Salud: características y aplicación [Documento informativo]. Gobierno de México. Recuperado de https://www.gob.mx/cms/uploads/attachment/file/554425/comunicado_indice_calidad_aire_05_2020_FINAL_v3.pdf',
     'DOF - Diario Oficial de la Federación. (2021). Dof.Gob.Mx. https://dof.gob.mx/nota_detalle_popup.php?codigo=5634084',
 ]
+
+
+def _hallazgo_panorama_general(anio, datos):
+    serie = datos.get("serie_dias_buena_aceptable")
+    if not serie:
+        return None
+    valores_por_anio = dict(serie)
+    anio_anterior = anio - 1
+    actual = valores_por_anio.get(anio)
+    anterior = valores_por_anio.get(anio_anterior)
+    if actual is None:
+        return None
+    frase = ""
+    if anterior:
+        diferencia = actual - anterior
+        variacion = "más" if diferencia >= 0 else "menos"
+        porcentaje = round(abs(diferencia) / anterior * 100)
+        frase = (f", {abs(diferencia)} días {variacion} que en {anio_anterior} "
+                 f"(un{'a disminución' if diferencia < 0 else ' incremento'} de {porcentaje}%)")
+    return f"El AMG registró {actual} días con calidad del aire Buena o Aceptable durante {anio}{frase}."
+
+
+def _hallazgo_horas_categoria(anio, datos):
+    horas = datos.get("horas_categoria_calidad") or {}
+    if not horas:
+        return None, None
+    amg = horas.get("AMG")
+    bullet_amg = None
+    if amg:
+        favorable_amg = amg.get("Buena", 0) + amg.get("Aceptable", 0)
+        desfavorable_amg = amg.get("Mala", 0) + amg.get("Muy mala", 0) + amg.get("Extremadamente mala", 0)
+        bullet_amg = (
+            f"A nivel horario, el AMG se mantuvo en categoría Buena o Aceptable el {favorable_amg:.0f}% de las "
+            f"horas de {anio}, frente a un {desfavorable_amg:.0f}% en categoría Mala o peor."
+        )
+
+    filas = []
+    for est in ORDEN_ESTACIONES_HORAS:
+        cats = horas.get(est, {})
+        di = cats.get("D.I.", 0)
+        favorable = cats.get("Buena", 0) + cats.get("Aceptable", 0)
+        desfavorable = cats.get("Mala", 0) + cats.get("Muy mala", 0) + cats.get("Extremadamente mala", 0)
+        filas.append((est, favorable, desfavorable, di))
+    suficientes = [f for f in filas if f[3] < UMBRAL_DI_SUFICIENTE]
+    bullet_estaciones = None
+    if suficientes:
+        mejor = max(suficientes, key=lambda f: f[1])
+        peor = max(suficientes, key=lambda f: f[2])
+        bullet_estaciones = (
+            f"Entre las estaciones con datos suficientes en {anio}, {mejor[0]} presentó la mayor proporción de "
+            f"horas en categoría Buena o Aceptable ({mejor[1]:.0f}%), mientras que {peor[0]} concentró la mayor "
+            f"proporción de horas en categoría Mala o peor ({peor[2]:.0f}%)."
+        )
+    return bullet_amg, bullet_estaciones
+
+
+def _hallazgo_cumplimiento_nom(datos):
+    filas_nom = datos.get("cumplimiento_nom") or []
+    if not filas_nom:
+        return None
+    equipo_por_clave = {e["simbolo"]: e["contaminantes"] for e in datos.get("estaciones", [])}
+
+    resumen_no_cumple = {}
+    for fila in filas_nom:
+        no_cumple = []
+        for clave, resultado in fila["estaciones"].items():
+            status = resultado.get("status")
+            if status == "sin_datos":
+                clave_capacidad = CAPACIDAD_POR_CONTAMINANTE[fila["contaminante"]]
+                tiene_equipo = (equipo_por_clave.get(clave) or {}).get(clave_capacidad, True)
+                status = "FO" if tiene_equipo else "sin_equipo"
+            if status == "no_cumple":
+                no_cumple.append(clave)
+        if no_cumple:
+            resumen_no_cumple[(fila["simbolo"], fila["periodo"])] = no_cumple
+
+    total_filas = len(filas_nom)
+    if not resumen_no_cumple:
+        return (f"De los {total_filas} parámetros normativos evaluados, ninguno presentó incumplimientos "
+                "en las estaciones con datos suficientes.")
+
+    (simbolo_peor, periodo_peor), estaciones_peor = max(resumen_no_cumple.items(), key=lambda kv: len(kv[1]))
+    total_incumple = len(resumen_no_cumple)
+    return (
+        f"De los {total_filas} parámetros normativos evaluados, {total_incumple} presentaron incumplimientos en "
+        f"al menos una estación. El más extendido fue {simbolo_peor} ({periodo_peor}), que no cumplió en "
+        f"{_NUMEROS_ES.get(len(estaciones_peor), len(estaciones_peor))} estaciones "
+        f"({_lista_es(sorted(estaciones_peor))})."
+    )
+
+
+# (contaminante, nombre, unidad, limite, periodo_nom, decimales)
+_HALLAZGOS_CONTAMINANTES = [
+    ("PM10", "PM₁₀", "µg/m³", 60, "24 horas", 0),
+    ("PM2.5", "PM₂.₅", "µg/m³", 33, "24 horas", 0),
+    ("O3", "O₃", "ppm", 0.090, "1 hora", 3),
+    ("CO", "CO", "ppm", 9.0, "8 horas", 1),
+]
+
+
+def _hallazgo_pico_contaminante(mensual, nombre, unidad, limite, periodo_nom, decimales):
+    idx = [m for m in range(1, 13) if mensual.get(str(m), {}).get("valido")]
+    if not idx:
+        return None
+    maxs = {m: mensual[str(m)]["kde_x"][-1] for m in idx}
+    m_max = max(maxs, key=maxs.get)
+    valor_max = maxs[m_max]
+    f = f".{decimales}f"
+    texto = (f"{nombre} registró su valor horario más alto del año en {MESES_ES[m_max - 1]}, con "
+             f"{valor_max:{f}} {unidad}")
+    if valor_max > limite:
+        veces = valor_max / limite
+        if veces >= 2:
+            texto += f", equivalente a {veces:.1f} veces el límite de la NOM ({periodo_nom})."
+        else:
+            texto += f", por encima del límite de la NOM ({periodo_nom})."
+    else:
+        texto += f", dentro del límite de la NOM ({periodo_nom})."
+    return texto
+
+
+def _hallazgo_expansion_red(anio, datos):
+    estaciones = datos.get("estaciones") or []
+    nuevas = [e["estacion"] for e in estaciones if e.get("nueva")]
+    if not nuevas:
+        return None
+    mes = datos.get("mes_incorporacion_nuevas")
+    frase_mes = f" en {mes} de {anio}" if mes else f" durante {anio}"
+    return (
+        f"La red de monitoreo se amplió{frase_mes} con la incorporación de {_lista_es(nuevas)}, "
+        f"alcanzando un total de {len(estaciones)} estaciones en operación al cierre del año."
+    )
+
+
+def _bullets_hallazgos(anio, datos):
+    bullets = []
+
+    b = _hallazgo_panorama_general(anio, datos)
+    if b:
+        bullets.append(b)
+
+    b_amg, b_est = _hallazgo_horas_categoria(anio, datos)
+    if b_amg:
+        bullets.append(b_amg)
+    if b_est:
+        bullets.append(b_est)
+
+    b = _hallazgo_cumplimiento_nom(datos)
+    if b:
+        bullets.append(b)
+
+    violines = datos.get("violines_mensuales") or {}
+    for contaminante, nombre, unidad, limite, periodo_nom, decimales in _HALLAZGOS_CONTAMINANTES:
+        mensual = violines.get(contaminante)
+        if not mensual:
+            continue
+        b = _hallazgo_pico_contaminante(mensual, nombre, unidad, limite, periodo_nom, decimales)
+        if b:
+            bullets.append(b)
+
+    b = _hallazgo_expansion_red(anio, datos)
+    if b:
+        bullets.append(b)
+
+    return bullets
+
+
+def _seccion_hallazgos(anio, estilos, datos):
+    story = [PageBreak(), Paragraph(f"Hallazgos {anio}", estilos["h2"])]
+    story.append(Paragraph(
+        f"Esta sección resume los principales hallazgos del informe {anio}, integrando los resultados "
+        "de calidad del aire, cumplimiento normativo y el comportamiento de cada contaminante a lo "
+        "largo del año.",
+        estilos["cuerpo"],
+    ))
+    for texto in _bullets_hallazgos(anio, datos):
+        story.append(Paragraph(texto, estilos["hallazgo"], bulletText="•"))
+    return story
 
 
 def _seccion_bibliografia(anio, estilos, datos):
@@ -1700,7 +1943,7 @@ def _grafica_violines_mensuales(mensual, etiqueta_y, limites=()):
         d.add(poligono)
 
         for a in v["atipicos"]:
-            d.add(Circle(cx, y_de(a), 0.7, fillColor=GRIS_SEMADET, strokeColor=None))
+            d.add(Circle(cx, y_de(a), 0.7, fillColor=AQUA, strokeColor=None))
 
         d.add(Line(cx, y_de(v["bigote_inf"]), cx, y_de(v["bigote_sup"]), strokeColor=negro, strokeWidth=0.8))
         for b in (v["bigote_inf"], v["bigote_sup"]):
@@ -1720,28 +1963,33 @@ def _grafica_violines_mensuales(mensual, etiqueta_y, limites=()):
 
 def _leyenda_violines(limites=()):
     fuente, tam = "Montserrat", 7.8
-    d = Drawing(CONTENT_WIDTH, 14)
+    alto_fila, alto_nota = 14, 11
+    dy = alto_nota  # se recorre toda la fila de la leyenda hacia arriba para dejar la nota abajo
+    d = Drawing(CONTENT_WIDTH, alto_fila + alto_nota)
     x = 0.0
 
     def texto(t):
         nonlocal x
-        d.add(String(x, 4, t, fontName=fuente, fontSize=tam, fillColor=TEXT))
+        d.add(String(x, 4 + dy, t, fontName=fuente, fontSize=tam, fillColor=TEXT))
         x += pdfmetrics.stringWidth(t, fuente, tam) + 10
 
-    poligono = Rect(x, 2, 9, 9, fillColor=NARANJA_SEMADET, strokeColor=colors.black, strokeWidth=0.6)
+    poligono = Rect(x, 2 + dy, 9, 9, fillColor=NARANJA_SEMADET, strokeColor=colors.black, strokeWidth=0.6)
     poligono.fillOpacity = 0.6
     d.add(poligono); x += 13; texto("Distribución (violín)")
-    caja = Rect(x, 2, 9, 9, fillColor=colors.black, strokeColor=colors.black)
+    caja = Rect(x, 2 + dy, 9, 9, fillColor=colors.black, strokeColor=colors.black)
     caja.fillOpacity = 0.6
     d.add(caja); x += 13; texto("IQR (caja)")
-    d.add(Line(x, 6.5, x + 9, 6.5, strokeColor=colors.black, strokeWidth=1.4)); x += 13; texto("Mediana")
-    d.add(Circle(x + 4, 6.5, 2.2, fillColor=colors.white, strokeColor=colors.black, strokeWidth=0.5)); x += 11; texto("Media")
-    d.add(Circle(x + 3, 6.5, 1.2, fillColor=GRIS_SEMADET, strokeColor=None)); x += 9; texto("Valores atípicos")
+    d.add(Line(x, 6.5 + dy, x + 9, 6.5 + dy, strokeColor=colors.black, strokeWidth=1.4)); x += 13; texto("Mediana")
+    d.add(Circle(x + 4, 6.5 + dy, 2.2, fillColor=colors.white, strokeColor=colors.black, strokeWidth=0.5)); x += 11; texto("Media")
+    d.add(Circle(x + 3, 6.5 + dy, 1.2, fillColor=AQUA, strokeColor=None)); x += 9; texto("Valores atípicos")
     for lim in limites:
-        linea = Line(x, 6.5, x + 11, 6.5, strokeColor=lim["color"], strokeWidth=1.3)
+        linea = Line(x, 6.5 + dy, x + 11, 6.5 + dy, strokeColor=lim["color"], strokeWidth=1.3)
         if lim["dash"]:
             linea.strokeDashArray = lim["dash"]
         d.add(linea); x += 15; texto(lim["etiqueta"])
+
+    d.add(String(0, 1, "IQR: rango entre el percentil 25 y el percentil 75 de las concentraciones horarias del mes.",
+                 fontName=fuente, fontSize=6.8, fillColor=MUTED))
     return d
 
 
@@ -3036,7 +3284,7 @@ class DocumentoInforme(SimpleDocTemplate):
     índice, con la página en la que cae, para armar la página de contenido."""
 
     def afterFlowable(self, flowable):
-        if isinstance(flowable, Paragraph) and flowable.style.name == "h2":
+        if isinstance(flowable, _ParagrafoBase) and flowable.style.name == "h2":
             texto = flowable.getPlainText()
             self.notify("TOCEntry", (0, texto, self.page))
             self.canv.bookmarkPage(f"sec_{self.page}_{abs(hash(texto)) % 100000}")
@@ -3093,6 +3341,7 @@ def _construir_story(anio, estilos, datos, con_indice=True):
     story += _seccion_particulas_suspendidas(anio, estilos, datos)
     story += _seccion_pm10(anio, estilos, datos)
     story += _seccion_pm25(anio, estilos, datos)
+    story += _seccion_hallazgos(anio, estilos, datos)
     story += _seccion_bibliografia(anio, estilos, datos)
     return story
 

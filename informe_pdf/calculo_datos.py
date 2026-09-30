@@ -679,6 +679,34 @@ def annual_compiled_by_station(dfd):
     return pd.DataFrame(rows).sort_values(["STATION", "ANIO"]).reset_index(drop=True)
 
 
+POLS_EQUIPO = ["PM10", "PM2.5", "O3", "SO2", "NO2", "CO"]
+
+
+def calcular_cobertura_equipo(dfh, estaciones=EST_ORDER_BASE, pols=POLS_EQUIPO):
+    """Para cada estación y contaminante, indica si se registró al menos una
+    hora válida durante el año (una aproximación de "la estación tiene el
+    equipo"). Si un contaminante sale en cero para TODAS las estaciones a la
+    vez, es más probable que sea una falla de red completa ese año (p. ej.
+    SO2 en 2024, que ninguna estación reportó) que la ausencia real del
+    sensor en las 13 estaciones -- ese caso se regresa aparte en 'ambiguos'
+    para que se confirme a mano en vez de asumir "sin equipo" para toda la
+    red."""
+    cobertura = {est: {} for est in estaciones}
+    ambiguos = []
+    for pol in pols:
+        alguna_estacion_con_dato = False
+        for est in estaciones:
+            if pol in dfh.columns:
+                n = int(dfh.loc[dfh["STATION"] == est, pol].notna().sum())
+            else:
+                n = 0
+            cobertura[est][pol] = n > 0
+            alguna_estacion_con_dato = alguna_estacion_con_dato or n > 0
+        if not alguna_estacion_con_dato:
+            ambiguos.append(pol)
+    return cobertura, ambiguos
+
+
 def dias_buena_aceptable_por_estacion(res_comp_est, anio, estaciones=EST_ORDER_BASE):
     """Días con IAS Buena + Aceptable por estación (sin la virtual AMG), para
     el mapa de burbujas. Una estación es "suficiente" si tiene al menos
@@ -835,19 +863,15 @@ def calcular_resumen_anual(ruta_excel, estacion="AMG"):
         "CO": calcular_violines_mensuales(dfh, "CO", suavizado=rolling_8h),
         "NO2": calcular_violines_mensuales(dfh, "NO2"),
         "O3": calcular_violines_mensuales(dfh, "O3"),
-        # PM10: NowCast (promedio ponderado de 12 h) calculado sobre la serie del AMG
-        "PM10": calcular_violines_mensuales(
-            dfh, "PM10",
-            suavizado=lambda s: pd.to_numeric(serie_nowcast_por_estacion(s.to_frame("PM10"), "PM10", 0), errors="coerce"),
-        ),
-        "PM2.5": calcular_violines_mensuales(
-            dfh, "PM2.5",
-            suavizado=lambda s: pd.to_numeric(serie_nowcast_por_estacion(s.to_frame("PM2.5"), "PM2.5", 1), errors="coerce"),
-        ),
+        # PM10: promedio móvil de 24 horas calculado sobre la serie del AMG
+        "PM10": calcular_violines_mensuales(dfh, "PM10", suavizado=rolling_24h),
+        # PM2.5: promedio móvil de 24 horas calculado sobre la serie del AMG
+        "PM2.5": calcular_violines_mensuales(dfh, "PM2.5", suavizado=rolling_24h),
     }
     perfil_horario = {pol: calcular_perfil_horario(dfh, pol) for pol in ["PM10", "PM2.5", "O3", "NO2", "SO2", "CO"]}
 
     cumplimiento_nom = resumen_cumplimiento_nom(dfd, anio)
+    cobertura_equipo, contaminantes_ambiguos = calcular_cobertura_equipo(dfh)
 
     return {
         "anio": anio,
@@ -858,6 +882,8 @@ def calcular_resumen_anual(ruta_excel, estacion="AMG"):
         "violines_mensuales": violines_mensuales,
         "dias_buena_aceptable_estaciones": dias_estaciones,
         "dias_buena_aceptable_estaciones_contaminante": dias_estaciones_contaminante,
+        "cobertura_equipo": cobertura_equipo,
+        "contaminantes_ambiguos": contaminantes_ambiguos,
     }
 
 
@@ -881,12 +907,22 @@ def actualizar_historico(anio, url_o_id=None, ruta_excel=None, ruta_resumen=RUTA
     entrada["violines_mensuales"] = resultado["violines_mensuales"]
     entrada["dias_buena_aceptable_estaciones"] = resultado["dias_buena_aceptable_estaciones"]
     entrada["dias_buena_aceptable_estaciones_contaminante"] = resultado["dias_buena_aceptable_estaciones_contaminante"]
+    entrada["cobertura_equipo"] = resultado["cobertura_equipo"]
+    entrada["contaminantes_ambiguos"] = resultado["contaminantes_ambiguos"]
     historico[str(anio)] = entrada
 
     ruta_resumen.parent.mkdir(parents=True, exist_ok=True)
     ruta_resumen.write_text(json.dumps(historico, ensure_ascii=False, indent=2), encoding="utf-8")
 
     print(f"[{anio}] {resultado['dias_buena_aceptable']} días Buena/Aceptable (AMG) -> {ruta_resumen}")
+    if resultado["contaminantes_ambiguos"]:
+        print(
+            f"AVISO: {', '.join(resultado['contaminantes_ambiguos'])} salió en 0 horas válidas para TODAS "
+            f"las estaciones en {anio}. No se puede distinguir automáticamente entre 'ninguna estación tiene "
+            "el equipo' y 'toda la red estuvo fuera de operación ese año'. Ese contaminante se dejó con el "
+            "valor manual que ya esté en el diccionario 'contaminantes' de cada estación en "
+            "generar_informe.py -- revísalo y confírmalo a mano antes de generar el PDF."
+        )
     return historico
 
 

@@ -104,6 +104,17 @@ def _campo_pagina(parrafo):
 # ---------------------------------------------------------------------------
 _TAG = re.compile(r"(<[^>]+>)")
 
+# generar_informe.py escribe los subíndices (PM₂.₅, PM₁₀, O₃...) con dígitos
+# Unicode ya subindexados (₀-₉). Word/Calibri sí los dibuja pequeños y bajos,
+# pero un "." normal entre dos de esos dígitos se queda a la altura de línea
+# normal y se ve "flotando" como un símbolo de grados (p. ej. "PM2°5"). Para
+# evitarlo, cualquier tramo de dígitos-subíndice (con o sin punto en medio,
+# como en "₂.₅") se vuelve a dígitos normales y se marca con subíndice real
+# de Word, para que el punto baje y encoja junto con los dígitos.
+_SUBINDICE_DIGITOS = "₀₁₂₃₄₅₆₇₈₉"
+_SUBINDICE_A_NORMAL = str.maketrans(_SUBINDICE_DIGITOS, "0123456789")
+_PATRON_SUBINDICE = re.compile(r"[₀-₉]+(?:\.[₀-₉]+)?")
+
 
 def _agregar_runs(parrafo, marcado, tam, color, negrita_base=False, italica_base=False):
     negrita, italica = negrita_base, italica_base
@@ -132,8 +143,18 @@ def _agregar_runs(parrafo, marcado, tam, color, negrita_base=False, italica_base
             continue
         texto = (trozo.replace("&nbsp;", " ").replace("&amp;", "&")
                  .replace("&lt;", "<").replace("&gt;", ">"))
-        run = parrafo.add_run(texto)
-        _fuente(run, tam, negrita, italica, color_actual[-1])
+        pos = 0
+        for coincidencia in _PATRON_SUBINDICE.finditer(texto):
+            if coincidencia.start() > pos:
+                run = parrafo.add_run(texto[pos:coincidencia.start()])
+                _fuente(run, tam, negrita, italica, color_actual[-1])
+            run_sub = parrafo.add_run(coincidencia.group(0).translate(_SUBINDICE_A_NORMAL))
+            _fuente(run_sub, tam, negrita, italica, color_actual[-1])
+            run_sub.font.subscript = True
+            pos = coincidencia.end()
+        if pos < len(texto):
+            run = parrafo.add_run(texto[pos:])
+            _fuente(run, tam, negrita, italica, color_actual[-1])
 
 
 # ---------------------------------------------------------------------------
