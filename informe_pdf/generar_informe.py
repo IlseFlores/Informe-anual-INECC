@@ -179,8 +179,8 @@ DATOS_POR_ANIO = {
                 ("Paola Bauche Petersen", "Secretaria de Medio Ambiente y Desarrollo Territorial"),
                 ("Karen de la Cabada Ruíz", "Directora General de Calidad del Aire"),
                 ("Elizabeth Duran Chávez", "Directora de Gestión de la Calidad del Aire"),
-                ("Nayeli Areli Perez Padilla", "Jefe de Centro Oficial de Medición"),
-                ("Beatríz Rodríguez Perez", "Coordinador Especializado"),
+                ("Nayeli Areli Pérez Padilla", "Jefe de Centro Oficial de Medición"),
+                ("Beatríz Rodríguez Pérez", "Coordinador Especializado"),
                 ("Ilse Regina Flores Reyes", "Técnico de Escuadrón Verde"),
             ],
             "equipo": [],
@@ -696,6 +696,7 @@ def _seccion_simaj(anio, estilos, datos):
             estilos["caption"],
         ))
 
+    story.append(Spacer(1, 10))
     story.append(Paragraph(
         "Las estaciones del SIMAJ registran de manera continua los contaminantes criterio (CO, "
         "NO₂, SO₂, O₃, PM₁₀ y PM₂.₅), además de variables meteorológicas que ayudan a interpretar el "
@@ -897,7 +898,7 @@ def _seccion_horas_categoria(anio, estilos, datos):
 
     story.append(KeepTogether([
         Paragraph(
-            "Figura 3. Horas del año según categoría del índice Aire y Salud, por estación.",
+            "Figura 3. Porcentaje de horas del año según categoría del índice Aire y Salud, por estación.",
             estilos["tabla_caption"],
         ),
         _grafica_horas_categoria(horas),
@@ -1072,7 +1073,6 @@ def _seccion_monoxido_carbono(anio, estilos, datos):
         serie="promedio móvil de 8 horas",
         limites=[dict(valor=9.0, color=AZUL_SEMADET, dash=[3, 2], etiqueta="Límite 8 h (NOM)",
                       texto="límite establecido por la NOM-021-SSA1 (9 ppm en 8 horas)")],
-        limite_aparte=True,
     )
     story += _seccion_mapa_dias_estaciones(
         anio, estilos, datos, contaminante="CO", nombre="CO", numero_figura="Figura 7",
@@ -1343,19 +1343,12 @@ def _seccion_pm25(anio, estilos, datos):
         "provienen de fuentes naturales y/o fuentes antropogénicas, estas partículas suelen ser conocidas "
         "también como partículas “respirables” debido a que pueden ser inhaladas profundamente en los pulmones, "
         "entrar al torrente sanguíneo e incluso al cerebro lo cual se puede asociar con enfermedades "
-        "cardiovasculares, respiratorias, y muerte prematura.",
-        estilos["cuerpo"],
-    ))
-    story.append(Paragraph(
-        "Sus fuentes antropogénicas son los automóviles, calentadores domésticos, termoeléctricas, etc., y sus "
-        "fuentes naturales incluyen los incendios y la resuspensión del polvo. Las partículas pueden ser "
-        "emitidas directamente de la fuente, o formarse en la atmósfera.",
-        estilos["cuerpo"],
-    ))
-    story.append(Paragraph(
-        "Las partículas finas (PM₂.₅) son la causa principal de visibilidad reducida (bruma), así como a través "
-        "del viento se pueden transportar las partículas a través de largas distancias y luego, estas pueden "
-        "instalarse en el suelo o el agua.",
+        "cardiovasculares, respiratorias, y muerte prematura. Sus fuentes antropogénicas son los automóviles, "
+        "calentadores domésticos, termoeléctricas, etc., y sus fuentes naturales incluyen los incendios y la "
+        "resuspensión del polvo. Las partículas pueden ser emitidas directamente de la fuente, o formarse en la "
+        "atmósfera. Las partículas finas (PM₂.₅) son la causa principal de visibilidad reducida (bruma), así "
+        "como a través del viento se pueden transportar las partículas a través de largas distancias y luego, "
+        "estas pueden instalarse en el suelo o el agua.",
         estilos["cuerpo"],
     ))
     story += _seccion_perfil_horario_mensual(
@@ -1513,13 +1506,29 @@ def _hallazgo_cumplimiento_nom(datos):
         return (f"De los {total_filas} parámetros normativos evaluados, ninguno presentó incumplimientos "
                 "en las estaciones con datos suficientes.")
 
-    (simbolo_peor, periodo_peor), estaciones_peor = max(resumen_no_cumple.items(), key=lambda kv: len(kv[1]))
     total_incumple = len(resumen_no_cumple)
+    max_count = max(len(v) for v in resumen_no_cumple.values())
+    empatados = [(simbolo, periodo, estaciones) for (simbolo, periodo), estaciones in resumen_no_cumple.items()
+                 if len(estaciones) == max_count]
+
+    grupos = {}
+    for simbolo, periodo, _ in empatados:
+        grupos.setdefault(simbolo, []).append(periodo)
+    partes = [f"{simbolo} ({_lista_es(periodos)})" for simbolo, periodos in grupos.items()]
+
+    conjuntos_estaciones = {frozenset(estaciones) for _, _, estaciones in empatados}
+    parentesis = (f" ({_lista_es(sorted(next(iter(conjuntos_estaciones))))})"
+                  if len(conjuntos_estaciones) == 1 else "")
+
+    if len(partes) == 1:
+        frase_parametros = f"El más extendido fue {partes[0]}, que no cumplió en"
+    else:
+        frase_parametros = f"Los más extendidos fueron {_lista_es(partes)}, cada uno sin cumplir en"
+
     return (
         f"De los {total_filas} parámetros normativos evaluados, {total_incumple} presentaron incumplimientos en "
-        f"al menos una estación. El más extendido fue {simbolo_peor} ({periodo_peor}), que no cumplió en "
-        f"{_NUMEROS_ES.get(len(estaciones_peor), len(estaciones_peor))} estaciones "
-        f"({_lista_es(sorted(estaciones_peor))})."
+        f"al menos una estación. {frase_parametros} "
+        f"{_NUMEROS_ES.get(max_count, max_count)} estaciones{parentesis}."
     )
 
 
@@ -1684,15 +1693,16 @@ def _seccion_ozono(anio, estilos, datos):
 
 
 def _seccion_perfil_horario_mensual(anio, estilos, datos, contaminante, nombre, unidad, numero_figura, texto=None):
-    story = [Paragraph(f"Comportamiento horario mensual de {nombre} en el AMG", estilos["h3"])]
-
-    story.append(Paragraph(texto or (
-        f"Para cada hora del año se toma la concentración máxima de {nombre} entre las estaciones de la red, "
-        "que representa al AMG, y se promedia por hora del día dentro de cada mes de "
-        f"{anio} (se exigen al menos 6 días con dato por hora, y se aplica una media móvil de 3 horas "
-        f"solo para suavizar la visualización). La {numero_figura} encadena esos doce ciclos de 24 horas, uno "
-        "por mes, en una sola línea continua."
-    ), estilos["cuerpo"]))
+    story = [KeepTogether([
+        Paragraph(f"Comportamiento horario mensual de {nombre} en el AMG", estilos["h3"]),
+        Paragraph(texto or (
+            f"Para cada hora del año se toma la concentración máxima de {nombre} entre las estaciones de la red, "
+            "que representa al AMG, y se promedia por hora del día dentro de cada mes de "
+            f"{anio} (se exigen al menos 6 días con dato por hora, y se aplica una media móvil de 3 horas "
+            f"solo para suavizar la visualización). La {numero_figura} encadena esos doce ciclos de 24 horas, uno "
+            "por mes, en una sola línea continua."
+        ), estilos["cuerpo"]),
+    ])]
 
     perfil_anio = (datos.get("perfil_horario") or {}).get(contaminante)
     if not perfil_anio:
