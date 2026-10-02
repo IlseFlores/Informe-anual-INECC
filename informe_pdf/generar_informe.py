@@ -127,7 +127,7 @@ COLOR_BURBUJA = AQUA
 MESES_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
 MES_LABELS_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
-# Colores de las categorías IAS (mismos que en categorias_ias, para Tabla 4)
+# Colores de las categorías IAS (mismos que en categorias_ias, para Tabla 3)
 # más gris para "D.I.". Las claves deben coincidir exactamente con las que
 # calculo_datos.py escribe en horas_categoria_calidad (CAT_ORDER usa "Muy
 # mala" con minúscula, a diferencia de "Muy Mala" en categorias_ias).
@@ -141,7 +141,7 @@ COLOR_CATEGORIA_IAS = {
     "D.I.": colors.HexColor("#B7C2C7"),
 }
 
-# Colores y mapeo de estatus para la Tabla 5 (cumplimiento de NOM). "cumple"
+# Colores y mapeo de estatus para la Tabla 4 (cumplimiento de NOM). "cumple"
 # y "no_cumple" reutilizan los verdes/rojos del IAS; DI/FO/sin_equipo usan
 # grises neutros para no competir visualmente con los veredictos.
 COLOR_NOM_CUMPLE = COLOR_CATEGORIA_IAS["Buena"]
@@ -158,7 +158,7 @@ CAPACIDAD_POR_CONTAMINANTE = {
     "PM10": "PM10", "PM2.5": "PM25", "O3": "O3", "CO": "CO", "NO2": "NO2", "SO2": "SO2",
 }
 
-# Etiquetas cortas para el encabezado de municipio en la Tabla 5: cuando el
+# Etiquetas cortas para el encabezado de municipio en la Tabla 4: cuando el
 # grupo cubre una sola estación (~30pt de ancho), "San Pedro Tlaquepaque"
 # no cabe ni partiéndolo por sílabas sueltas; se usa un guion manual en el
 # punto de corte para evitar que reportlab lo parta a media palabra.
@@ -191,7 +191,7 @@ DATOS_POR_ANIO = {
         # año; el código de la sección se queda intacto para reactivarla cuando haya
         # suficiente registro anual de NO₂ (quitar esta línea, o ponerla en True).
         "incluir_no2": False,
-        # Igual que "incluir_no2": en 2024 no hay ningún dato de SO₂ (ver la Tabla 5,
+        # Igual que "incluir_no2": en 2024 no hay ningún dato de SO₂ (ver la Tabla 4,
         # fila FO en todas las estaciones), así que se oculta la sección completa.
         "incluir_so2": False,
         "porcentaje_poblacion_amg": "63",
@@ -202,12 +202,11 @@ DATOS_POR_ANIO = {
             "el Sistema de Monitoreo Atmosférico de Jalisco (SIMAJ) en el "
             "Área Metropolitana de Guadalajara."
         ),
-        # Tabla 1 y Tabla 2: estaciones, su área de influencia, año de inicio
-        # de operación y contaminantes que mide cada una. "nueva" marca las
-        # tres estaciones incorporadas en septiembre de 2024. El histórico de
-        # contaminantes de las 10 estaciones originales viene de la Tabla 9.1
-        # del Informe Nacional de Calidad del Aire (INECC); Oblatos y Atemajac
-        # no cuentan con equipo para PM2.5.
+        # Datos por estación: su área de influencia, año de inicio de
+        # operación y contaminantes que mide cada una. Alimentan la tabla de
+        # estaciones (oculta en 2024, ver "incluir_tabla_estaciones" abajo) y
+        # la tabla de contaminantes por estación. "nueva" marca las tres
+        # estaciones incorporadas en septiembre de 2024.
         "estaciones": [
             {"municipio": "San Pedro Tlaquepaque", "area_influencia": "San Pedro Tlaquepaque y Guadalajara", "estacion": "Tlaquepaque", "simbolo": "TLA", "nueva": False, "anio_inicio": 1993, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
             {"municipio": "El Salto", "area_influencia": "El Salto, San Pedro Tlaquepaque y Tlajomulco de Zúñiga", "estacion": "Pintas", "simbolo": "PIN", "nueva": False, "anio_inicio": 2011, "contaminantes": {"PM10": True, "PM25": True, "O3": True, "SO2": True, "NO2": True, "CO": True}},
@@ -232,7 +231,12 @@ DATOS_POR_ANIO = {
         "equipo_confirmado_manual": {
             "COU": ["NO2"],  # el equipo existe; 2024 fue su primer año y no generó lecturas válidas
         },
-        # Tabla 3: contaminante criterio y la NOM de salud aplicable a cada uno.
+        # Igual que "incluir_no2"/"incluir_so2": solo para 2024 se oculta la
+        # tabla de estaciones (Tabla 1); el código y su numeración se quedan
+        # intactos para reactivarla en años futuros. Mientras está oculta, las
+        # tablas 2-5 se renumeran como 1-4.
+        "incluir_tabla_estaciones": False,
+        # Tabla 2: contaminante criterio y la NOM de salud aplicable a cada uno.
         "normas_nom": [
             {"contaminante": "Ozono", "simbolo": "O₃", "nom": "NOM-020-SSA1-2021"},
             {"contaminante": "Dióxido de Nitrógeno", "simbolo": "NO₂", "nom": "NOM-023-SSA1-2021"},
@@ -242,13 +246,13 @@ DATOS_POR_ANIO = {
             {"contaminante": "Partículas (diámetro ≤ 2.5 μm)", "simbolo": "PM₂.₅", "nom": "NOM-025-SSA1-2021"},
         ],
         # Nota que explica por qué NO2 (medido por la red) no entra a la
-        # evaluación anual de cumplimiento de NOM ni a la Tabla 3.
+        # evaluación anual de cumplimiento de NOM ni a la Tabla 2.
         "nota_no2": (
             "La evaluación en este informe considera <b>O₃, PM₁₀, PM₂.₅, SO₂ y CO</b>. NO₂ y SO₂ fue excluido "
             "de la evaluación anual debido a la modernización de la red en 2024, ya que se reemplazaron "
             "los analizadores y no cumple con la suficiencia anual requerida por la NOM para su análisis."
         ),
-        # Tabla 4: categorías del Índice Aire y Salud (NOM-172-SEMARNAT-2023).
+        # Tabla 3: categorías del Índice Aire y Salud (NOM-172-SEMARNAT-2023).
         # "reco_unica" son filas donde la recomendación es la misma para toda
         # la población; "reco_general"/"reco_sensibles" cuando difiere.
         "categorias_ias": [
@@ -367,7 +371,7 @@ def _datos_del_anio(anio):
                          "dias_buena_aceptable_estaciones_contaminante"):
             datos[clave] = valor
 
-    # Tabla 2 (equipo por estación): la cobertura calculada del año manda,
+    # Tabla 1 (equipo por estación): la cobertura calculada del año manda,
     # contaminante por contaminante, EXCEPTO los que salieron en 0 horas para
     # toda la red (ver calcular_cobertura_equipo en calculo_datos.py) -- esos
     # se quedan con el valor editorial de DATOS_POR_ANIO porque el dato del
@@ -711,13 +715,13 @@ def _seccion_simaj(anio, estilos, datos):
         "parte del programa de modernización del SIMAJ, en septiembre se incorporaron tres nuevas "
         "estaciones: Country (Guadalajara), Santa Margarita (Zapopan) y Santa Anita (Tlajomulco de "
         "Zúñiga), alcanzando un total de trece estaciones en operación al cierre del año. La Tabla 1 "
-        "presenta la ubicación y el área de influencia de cada estación, mientras que la Tabla 2 "
         "muestra los contaminantes monitoreados en cada una de ellas.",
         estilos["cuerpo"],
     ))
 
-    story += _tabla_estaciones(estilos, datos["estaciones"])
-    story.append(Spacer(1, 10))
+    if datos.get("incluir_tabla_estaciones", True):
+        story += _tabla_estaciones(estilos, datos["estaciones"])
+        story.append(Spacer(1, 10))
     story.append(KeepTogether(_tabla_contaminantes(estilos, datos["estaciones"])))
 
     story.append(Paragraph(
@@ -750,7 +754,7 @@ def _seccion_evaluacion_nom(estilos, datos):
         "contaminante con los valores establecidos en las NOM. Cuando estos límites son superados, se "
         "considera “fuera de norma”, por lo que aumenta el riesgo de efectos adversos en la "
         "salud, especialmente para niñas y niños, personas adultas mayores, mujeres embarazadas y "
-        "personas con enfermedades respiratorias o cardiovasculares. La Tabla 3 presenta los "
+        "personas con enfermedades respiratorias o cardiovasculares. La Tabla 2 presenta los "
         "contaminantes evaluados y la NOM aplicable a cada uno.",
         estilos["cuerpo"],
     ))
@@ -764,7 +768,7 @@ def _seccion_evaluacion_nom(estilos, datos):
         "Por otra parte, el IAS clasifica la calidad del aire en cinco categorías: Buena, Aceptable, "
         "Mala, Muy mala y Extremadamente mala. Cada categoría está representada por un color y se "
         "acompaña de recomendaciones para reducir la exposición cuando los niveles de contaminación "
-        "representan un riesgo para la salud. La Tabla 4 muestra las categorías del Índice Aire y Salud "
+        "representan un riesgo para la salud. La Tabla 3 muestra las categorías del Índice Aire y Salud "
         "y los niveles de riesgo asociados.",
         estilos["cuerpo"],
     ))
@@ -1071,8 +1075,6 @@ def _seccion_monoxido_carbono(anio, estilos, datos):
     story += _seccion_violines_mensuales(
         anio, estilos, datos, "CO", "CO", "ppm", "Figura 6",
         serie="promedio móvil de 8 horas",
-        limites=[dict(valor=9.0, color=AZUL_SEMADET, dash=[3, 2], etiqueta="Límite 8 h (NOM)",
-                      texto="límite establecido por la NOM-021-SSA1 (9 ppm en 8 horas)")],
     )
     story += _seccion_mapa_dias_estaciones(
         anio, estilos, datos, contaminante="CO", nombre="CO", numero_figura="Figura 7",
@@ -1156,16 +1158,10 @@ def _seccion_dioxido_nitrogeno(anio, estilos, datos):
     )
     story += _seccion_violines_mensuales(
         anio, estilos, datos, "NO2", "NO₂", "ppm", "Figura 9", serie="valor horario",
-        limites=[
-            dict(valor=0.106, color=NARANJA_SEMADET, dash=[3, 2], etiqueta="Límite 1 h (NOM)",
-                 texto="límite horario de la NOM (0.106 ppm)"),
-            dict(valor=0.021, color=GRIS_SEMADET, dash=None, etiqueta="Límite anual (NOM)",
-                 texto="límite anual de la NOM (0.021 ppm)"),
-        ],
         decimales=3, con_resultados=True,
         nota_final=(
             "Como el registro cubre menos del 75% de los días del año, estas comparaciones son solo de "
-            "referencia y el cumplimiento de la NOM no se evalúa para este contaminante (D.I. en la Tabla 5)."
+            "referencia y el cumplimiento de la NOM no se evalúa para este contaminante (D.I. en la Tabla 4)."
         ),
     )
     story += _seccion_mapa_dias_estaciones(
@@ -1256,7 +1252,7 @@ def _texto_perfil_no2(anio, perfil):
         frase_patron="un patrón consistente con la actividad vehicular de la ciudad, principal fuente de este contaminante",
         nota_datos=(f"Las estaciones de la red iniciaron el registro de NO₂ hasta la segunda mitad de {anio}. "
                     "Como el registro cubre menos del 75% de los días del año, el cumplimiento de la NOM no se "
-                    f"evalúa para este contaminante en {anio} (D.I. en la Tabla 5)."),
+                    f"evalúa para este contaminante en {anio} (D.I. en la Tabla 4)."),
     )
 
 
@@ -1321,12 +1317,6 @@ def _seccion_pm10(anio, estilos, datos):
     story += _seccion_violines_mensuales(
         anio, estilos, datos, "PM10", "PM₁₀", "µg/m³", "Figura 12",
         serie="promedio móvil de 24 horas",
-        limites=[
-            dict(valor=60, periodo="24 horas", color=NARANJA_SEMADET, dash=[3, 2], etiqueta="Límite 24 h (NOM)",
-                 texto="límite de 24 horas de la NOM (60 µg/m³)"),
-            dict(valor=28, color=GRIS_SEMADET, dash=None, etiqueta="Límite anual (NOM)",
-                 texto="límite anual de la NOM (28 µg/m³)"),
-        ],
         decimales=0, con_resultados=True, salto_pagina=True, resultados_narrativo=True,
     )
     story += _seccion_mapa_dias_estaciones(
@@ -1362,12 +1352,6 @@ def _seccion_pm25(anio, estilos, datos):
     story += _seccion_violines_mensuales(
         anio, estilos, datos, "PM2.5", "PM₂.₅", "µg/m³", "Figura 15",
         serie="promedio móvil de 24 horas",
-        limites=[
-            dict(valor=33, color=NARANJA_SEMADET, dash=[3, 2], etiqueta="Límite 24 h (NOM)",
-                 texto="límite de 24 horas de la NOM (33 µg/m³)"),
-            dict(valor=10, color=GRIS_SEMADET, dash=None, etiqueta="Límite anual (NOM)",
-                 texto="límite anual de la NOM (10 µg/m³)"),
-        ],
         decimales=0, con_resultados=True,
     )
     story += _seccion_mapa_dias_estaciones(
@@ -1400,7 +1384,7 @@ def _seccion_dioxido_azufre(anio, estilos, datos):
         story.append(Paragraph(
             f"En {anio}, las bases de datos del SIMAJ no registran mediciones de SO₂ en ninguna de las estaciones "
             "de la red, por lo que no es posible presentar el comportamiento horario de este contaminante ni "
-            "evaluar su cumplimiento respecto a la NOM (fuera de operación, FO, en la Tabla 5). Por esta razón, "
+            "evaluar su cumplimiento respecto a la NOM (fuera de operación, FO, en la Tabla 4). Por esta razón, "
             "esta sección no incluye gráficas de concentración; sí se presenta el mosaico de días con calidad "
             f"Buena o Aceptable del periodo {anio - ANIOS_HISTORICO + 1}–{anio} para los años con registro.",
             estilos["cuerpo"],
@@ -1679,10 +1663,6 @@ def _seccion_ozono(anio, estilos, datos):
     )
     story += _seccion_violines_mensuales(
         anio, estilos, datos, "O3", "O₃", "ppm", "Figura 9", serie="valor horario",
-        limites=[
-            dict(valor=0.090, color=NARANJA_SEMADET, dash=[3, 2], etiqueta="Límite 1 h (NOM)",
-                 texto="límite horario de la NOM (0.090 ppm)"),
-        ],
         decimales=3, con_resultados=True,
     )
     story += _seccion_mapa_dias_estaciones(
@@ -1779,7 +1759,7 @@ def _resultados_violines_narrativo(mensual, nombre, unidad, limites, decimales=0
     más variabilidad, y el valor máximo frente al límite de la NOM), calculada de los
     estadísticos mensuales. Solo aplica a años completos (12 meses con dato)."""
     idx = [m for m in range(1, 13) if mensual.get(str(m), {}).get("valido")]
-    if len(idx) != 12 or not limites:
+    if len(idx) != 12:
         return []
     f = f".{decimales}f"
     med = {m: mensual[str(m)]["mediana"] for m in idx}
@@ -1795,6 +1775,8 @@ def _resultados_violines_narrativo(mensual, nombre, unidad, limites, decimales=0
         "durante ese periodo, las concentraciones horarias fluctúan más que en cualquier otro mes del año "
         f"(rango de {iqr[m_ancha]:{f}} {unidad})."
     )
+    if not limites:
+        return [p1]
 
     lim = limites[0]
     arriba = [m for m in idx if maxs[m] > lim["valor"]]
@@ -2143,13 +2125,14 @@ def _seccion_mapa_dias_estaciones(anio, estilos, datos, contaminante=None, nombr
         return story
 
     orden_anios = [anio - i for i in range(ANIOS_HISTORICO)]
+    anio_inicio_por_estacion = {e["simbolo"]: e["anio_inicio"] for e in datos["estaciones"]}
     story.append(KeepTogether([
         Paragraph(
             f"{numero_figura}. Días con calidad del aire Buena o Aceptable por estación{sufijo}, "
             f"{orden_anios[-1]}–{orden_anios[0]}.",
             estilos["tabla_caption"],
         ),
-        MosaicoMapas(mapas, orden_anios, equipo=equipo),
+        MosaicoMapas(mapas, orden_anios, equipo=equipo, anio_inicio=anio_inicio_por_estacion),
         Spacer(1, 1),
         _leyenda_mapa_dias(con_sin_equipo=bool(equipo and not all(equipo.values()))),
     ]))
@@ -2688,7 +2671,7 @@ def _separar_burbujas(posiciones, radios, lado, max_desp=9.0, iteraciones=40):
     return pos
 
 
-def _mosaico_mapas_dias(mapas, orden_anios, n_cols=3, con_imagen=True, equipo=None):
+def _mosaico_mapas_dias(mapas, orden_anios, n_cols=3, con_imagen=True, equipo=None, anio_inicio=None):
     """Mosaico de mapas (uno por año) sobre un mapa base de calles: una burbuja
     por estación, con radio creciente con los días Buena/Aceptable y escala
     común a todos los paneles."""
@@ -2736,7 +2719,10 @@ def _mosaico_mapas_dias(mapas, orden_anios, n_cols=3, con_imagen=True, equipo=No
         if datos_anio is None:
             continue
 
-        estaciones = sorted(datos_anio, key=lambda e: -datos_anio[e]["dias"])
+        estaciones = sorted(
+            (e for e in datos_anio if not anio_inicio or anio_inicio.get(e, 0) <= anio_i),
+            key=lambda e: -datos_anio[e]["dias"],
+        )
         radios = {
             e: (r_min + (r_max - r_min) * (datos_anio[e]["dias"] / vmax) ** 0.9) if datos_anio[e]["dias"] > 0 else 2.6
             for e in estaciones
@@ -2781,10 +2767,10 @@ class MosaicoMapas(Flowable):
     era lo que lo hacía pesar decenas de MB, y la calidad es idéntica.
     'dibujo_completo' (con la imagen dentro del dibujo) se usa para el Word."""
 
-    def __init__(self, mapas, orden_anios, equipo=None):
+    def __init__(self, mapas, orden_anios, equipo=None, anio_inicio=None):
         super().__init__()
-        self.dibujo_vectorial = _mosaico_mapas_dias(mapas, orden_anios, con_imagen=False, equipo=equipo)
-        self.dibujo_completo = _mosaico_mapas_dias(mapas, orden_anios, con_imagen=True, equipo=equipo)
+        self.dibujo_vectorial = _mosaico_mapas_dias(mapas, orden_anios, con_imagen=False, equipo=equipo, anio_inicio=anio_inicio)
+        self.dibujo_completo = _mosaico_mapas_dias(mapas, orden_anios, con_imagen=True, equipo=equipo, anio_inicio=anio_inicio)
         self.width, self.height = self.dibujo_vectorial.width, self.dibujo_vectorial.height
 
     def wrap(self, ancho_disponible, alto_disponible):
@@ -2849,7 +2835,7 @@ def _seccion_cumplimiento_nom(anio, estilos, datos):
 
     story.append(KeepTogether([
         Paragraph(
-            "Tabla 5. Cumplimiento de las NOM de calidad del aire, por estación.",
+            "Tabla 4. Cumplimiento de las NOM de calidad del aire, por estación.",
             estilos["tabla_caption"],
         ),
         _tabla_cumplimiento_nom(datos["estaciones"], filas_nom, estilos),
@@ -2877,7 +2863,7 @@ def _formatear_valor_nom(valor, fila_nom):
 
 
 def _celda_nom_contenido(resultado, fila_nom, contaminantes_capacidad, estilos):
-    """Devuelve (texto, color_fondo, estilo) para una celda de la Tabla 5,
+    """Devuelve (texto, color_fondo, estilo) para una celda de la Tabla 4,
     resolviendo aquí (no en calculo_datos.py) si un "sin_datos" es en
     realidad una estación fuera de operación (FO) o sin ese equipo (¤)."""
     status = resultado.get("status")
@@ -2900,8 +2886,8 @@ def _celda_nom_contenido(resultado, fila_nom, contaminantes_capacidad, estilos):
 
 
 def _tabla_cumplimiento_nom(estaciones, filas_nom, estilos):
-    """Tabla 5: filas = parámetro NOM (contaminante + periodo), columnas =
-    estaciones agrupadas por municipio (mismo orden que la Tabla 1)."""
+    """Tabla 4: filas = parámetro NOM (contaminante + periodo), columnas =
+    estaciones agrupadas por municipio (mismo orden que la lista de estaciones)."""
     claves = [e["simbolo"] for e in estaciones]
     municipios = [e["municipio"] for e in estaciones]
     grupos_municipio = _spans_de_grupos(municipios)
@@ -3038,7 +3024,7 @@ def _tabla_normas(estilos, filas):
 
     return [
         Paragraph(
-            "Tabla 3. Relación de Contaminante Criterio con la Norma Oficial Mexicana aplicable.",
+            "Tabla 2. Relación de Contaminante Criterio con la Norma Oficial Mexicana aplicable.",
             estilos["tabla_caption"],
         ),
         tabla,
@@ -3123,7 +3109,7 @@ def _tabla_ias(estilos, filas):
 
     return [
         Paragraph(
-            "Tabla 4. Categorías, riesgo asociado para la salud y recomendaciones del Índice Aire y Salud.",
+            "Tabla 3. Categorías, riesgo asociado para la salud y recomendaciones del Índice Aire y Salud.",
             estilos["tabla_caption"],
         ),
         tabla,
@@ -3238,12 +3224,16 @@ def _celda_badges(fila, estilos):
 def _tabla_contaminantes(estilos, filas):
     filas_ordenadas = sorted(filas, key=lambda f: _clave_alfabetica(f["estacion"]))
 
-    encabezados = ["Estación", "Municipio", "Inicio de operación", "Contaminantes medidos"]
-    data = [[Paragraph(h, estilos["tabla_header"]) for h in encabezados]]
+    encabezado_estacion = Paragraph(
+        "Estación<br/><font face='Montserrat' size=7.6>Abreviatura</font>",
+        estilos["tabla_header"],
+    )
+    encabezados = ["Municipio", "Inicio de operación", "Contaminantes medidos"]
+    data = [[encabezado_estacion] + [Paragraph(h, estilos["tabla_header"]) for h in encabezados]]
     for f in filas_ordenadas:
         estacion_cell = Paragraph(
             f"{f['estacion']}{'*' if f['nueva'] else ''}<br/>"
-            f"<font color='#6C8894' size=7.3>{f['simbolo']}</font>",
+            f"<font face='Montserrat' color='#6C8894' size=7.3>{f['simbolo']}</font>",
             estilos["estacion_nombre"],
         )
         data.append([
@@ -3274,7 +3264,7 @@ def _tabla_contaminantes(estilos, filas):
 
     return [
         Paragraph(
-            "Tabla 2. Contaminantes monitoreados en cada estación del SIMAJ.",
+            "Tabla 1. Contaminantes monitoreados en cada estación del SIMAJ.",
             estilos["tabla_caption"],
         ),
         tabla,
