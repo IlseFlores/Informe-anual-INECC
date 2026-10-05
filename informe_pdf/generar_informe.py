@@ -33,6 +33,7 @@ Figura 2) viven en datos/resumen_historico.json y sobreescriben a
 DATOS_POR_ANIO cuando están disponibles -- ver _datos_del_anio().
 """
 import argparse
+import copy
 import io
 import json
 import re
@@ -76,7 +77,19 @@ def _arreglar_subindices_con_punto(texto, tam_punto):
     return _PATRON_SUBINDICE_PUNTO.sub(reemplazo, texto)
 
 
+_FIG_NUM = {}
+_PATRON_FIGURA = re.compile(r"§FIG:([a-z0-9_]+)§")
+
+
+def _figura(clave):
+    if clave not in _FIG_NUM:
+        _FIG_NUM[clave] = len(_FIG_NUM) + 1
+    return f"Figura {_FIG_NUM[clave]}"
+
+
 def Paragraph(texto, *args, **kwargs):
+    if isinstance(texto, str) and "§FIG:" in texto:
+        texto = _PATRON_FIGURA.sub(lambda m: _figura(m.group(1)), texto)
     if isinstance(texto, str) and _PATRON_SUBINDICE_PUNTO.search(texto):
         estilo = kwargs.get("style") or (args[0] if args else None)
         tam_base = getattr(estilo, "fontSize", None) or _TAM_PARRAFO_PREDETERMINADO
@@ -91,6 +104,11 @@ RUTA_RESUMEN_HISTORICO = DATOS_DIR / "resumen_historico.json"
 
 # Cuántos años hacia atrás se muestran en la serie histórica (Figura 2, etc.)
 ANIOS_HISTORICO = 6
+PRIMER_ANIO_CON_DATOS = 2013
+
+
+def _inicio_periodo(anio):
+    return max(anio - ANIOS_HISTORICO + 1, PRIMER_ANIO_CON_DATOS)
 
 # ---------------------------------------------------------------------------
 # Paleta e identidad visual (misma paleta usada en el dashboard)
@@ -198,7 +216,7 @@ DATOS_POR_ANIO = {
         "fuente_poblacion": "IIEG, 2022; INEGI, 2021",
         "imagen_red_monitoreo": IMG_DIR / "red_monitoreo_2024.png",
         "caption_imagen_red": (
-            "Figura 1. Ubicación de las estaciones de monitoreo que conforman "
+            "§FIG:red§. Ubicación de las estaciones de monitoreo que conforman "
             "el Sistema de Monitoreo Atmosférico de Jalisco (SIMAJ) en el "
             "Área Metropolitana de Guadalajara."
         ),
@@ -311,17 +329,40 @@ def _cargar_resumen_historico():
 
 def _datos_del_anio(anio):
     if anio not in DATOS_POR_ANIO:
-        anios_disp = ", ".join(str(a) for a in sorted(DATOS_POR_ANIO))
-        raise ValueError(
-            f"No hay datos configurados para el año {anio}. "
-            f"Años disponibles: {anios_disp}."
-        )
+        if not (2013 <= anio < min(DATOS_POR_ANIO)):
+            anios_disp = ", ".join(str(a) for a in sorted(DATOS_POR_ANIO))
+            raise ValueError(
+                f"No hay datos configurados para el año {anio}. "
+                f"Años disponibles: {anios_disp}."
+            )
+        return _datos_anio_anterior(anio)
     datos = dict(DATOS_POR_ANIO[anio])
     # Copia profunda de "estaciones" (y su "contaminantes" anidado): más abajo
     # se puede sobreescribir por estación con la cobertura calculada del año,
     # y no queremos mutar la constante DATOS_POR_ANIO en el proceso.
     datos["estaciones"] = [dict(e, contaminantes=dict(e["contaminantes"])) for e in datos.get("estaciones", [])]
+    return _fusionar_historico(anio, datos)
 
+
+def _datos_anio_anterior(anio):
+    """Informe de un año sin configuración propia: parte de la plantilla de
+    2024, solo con las estaciones que ya existían, sin la tabla de cumplimiento
+    de NOM (no hay límites de ese año) y sin excepciones de equipo de 2024."""
+    base = copy.deepcopy(DATOS_POR_ANIO[min(DATOS_POR_ANIO)])
+    base["estaciones"] = [e for e in base["estaciones"] if e["anio_inicio"] <= anio]
+    base["equipo_confirmado_manual"] = {}
+    base["incluir_cumplimiento_nom"] = False
+    base["incluir_tabla_estaciones"] = False
+    base["nota_no2"] = None
+    base["imagen_red_monitoreo"] = IMG_DIR / "red_monitoreo_10_estaciones.png"
+    entrada = _cargar_resumen_historico().get(str(anio), {})
+    sin_datos_red = set(entrada.get("contaminantes_ambiguos", []))
+    base["incluir_no2"] = "NO2" not in sin_datos_red
+    base["incluir_so2"] = "SO2" not in sin_datos_red
+    return _fusionar_historico(anio, base)
+
+
+def _fusionar_historico(anio, datos):
     historico = _cargar_resumen_historico()
     if str(anio) not in historico:
         return datos
@@ -379,7 +420,10 @@ def _datos_del_anio(anio):
     # operación", y eso solo se puede confirmar a mano.
     cobertura_equipo = entrada_anio.get("cobertura_equipo")
     if cobertura_equipo:
-        ambiguos = set(entrada_anio.get("contaminantes_ambiguos", []))
+        # Solo el año configurado (2024) conserva a mano los contaminantes en cero
+        # para toda la red; en el resto de los años, cero en toda la red significa
+        # que no hubo aparato.
+        ambiguos = set(entrada_anio.get("contaminantes_ambiguos", [])) if anio in DATOS_POR_ANIO else set()
         confirmados_manual = datos.get("equipo_confirmado_manual", {})
         for estacion in datos.get("estaciones", []):
             cobertura_est = cobertura_equipo.get(estacion["simbolo"])
@@ -674,7 +718,7 @@ def _seccion_simaj(anio, estilos, datos):
         "El Sistema de Monitoreo Atmosférico de Jalisco (SIMAJ) es la red estatal encargada de medir de "
         "manera continua la calidad del aire. Su operación se concentra en el AMG, donde se concentra "
         f"aproximadamente el {datos['porcentaje_poblacion_amg']}% de la población del estado, por lo que "
-        "constituye el principal ámbito de cobertura del SIMAJ. La Figura 1 muestra la ubicación de las "
+        "constituye el principal ámbito de cobertura del SIMAJ. La §FIG:red§ muestra la ubicación de las "
         "estaciones de monitoreo que conforman la red."
     )
     story.append(Paragraph(texto, estilos["cuerpo"]))
@@ -710,12 +754,22 @@ def _seccion_simaj(anio, estilos, datos):
         estilos["cuerpo"],
     ))
 
+    nuevas = [e for e in datos["estaciones"] if e["nueva"] and e["anio_inicio"] == anio]
+    n_total = len(datos["estaciones"])
+    if nuevas:
+        n_previas = n_total - len(nuevas)
+        texto_red = (
+            f"Durante el primer semestre de {anio}, la red operó con {_NUMEROS_ES.get(n_previas, n_previas)} "
+            "estaciones de monitoreo. Como parte del programa de modernización del SIMAJ, en "
+            f"{datos.get('mes_incorporacion_nuevas', '')} se incorporaron {_NUMEROS_ES.get(len(nuevas), len(nuevas))} "
+            "nuevas estaciones: "
+            + _lista_es([f"{e['estacion']} ({e['municipio']})" for e in nuevas])
+            + f", alcanzando un total de {_NUMEROS_ES.get(n_total, n_total)} estaciones en operación al cierre del año. "
+        )
+    else:
+        texto_red = f"Durante {anio}, la red operó con {_NUMEROS_ES.get(n_total, n_total)} estaciones de monitoreo. "
     story.append(Paragraph(
-        f"Durante el primer semestre de {anio}, la red operó con diez estaciones de monitoreo. Como "
-        "parte del programa de modernización del SIMAJ, en septiembre se incorporaron tres nuevas "
-        "estaciones: Country (Guadalajara), Santa Margarita (Zapopan) y Santa Anita (Tlajomulco de "
-        "Zúñiga), alcanzando un total de trece estaciones en operación al cierre del año. La Tabla 1 "
-        "muestra los contaminantes monitoreados en cada una de ellas.",
+        texto_red + "La Tabla 1 muestra los contaminantes monitoreados en cada una de ellas.",
         estilos["cuerpo"],
     ))
 
@@ -761,7 +815,8 @@ def _seccion_evaluacion_nom(estilos, datos):
 
     story.append(KeepTogether(_tabla_normas(estilos, datos["normas_nom"])))
     story.append(Spacer(1, 10))
-    story.append(_callout(datos["nota_no2"], estilos))
+    if datos.get("nota_no2"):
+        story.append(_callout(datos["nota_no2"], estilos))
     story.append(Spacer(1, 4))
 
     story.append(Paragraph(
@@ -793,7 +848,7 @@ def _seccion_panorama_general(anio, estilos, datos):
 
     story.append(KeepTogether([
         Paragraph(
-            "Figura 2. Días con calidad del aire Buena o Aceptable en el AMG.",
+            "§FIG:dias§. Días con calidad del aire Buena o Aceptable en el AMG.",
             estilos["tabla_caption"],
         ),
         _grafica_dias_buena_aceptable(serie),
@@ -827,7 +882,7 @@ def _texto_panorama_general(anio, serie):
 
     return (
         f"Durante {anio} se registraron {valor_actual} días con calidad del aire Buena o Aceptable en "
-        f"el AMG{frase_comparacion}. La Figura 2 muestra la evolución anual de este indicador entre "
+        f"el AMG{frase_comparacion}. La §FIG:dias§ muestra la evolución anual de este indicador entre "
         f"{anio_ini} y {anio_fin}. En este periodo, el mayor número de días con calidad del aire Buena "
         f"o Aceptable se registró en {anio_max}, con {valor_max} días, mientras que {anio_min} presentó "
         f"el valor más bajo, con {valor_min} días."
@@ -879,6 +934,11 @@ def _grafica_dias_buena_aceptable(serie):
     return d
 
 
+def _estaciones_del_anio(anio, datos, orden):
+    existentes = {e["simbolo"] for e in datos["estaciones"] if e["anio_inicio"] <= anio}
+    return [s for s in orden if s in existentes]
+
+
 def _seccion_horas_categoria(anio, estilos, datos):
     story = [Paragraph("Horas del año según categoría de calidad del aire", estilos["h2"])]
 
@@ -887,9 +947,10 @@ def _seccion_horas_categoria(anio, estilos, datos):
         "contaminantes criterio (el contaminante que en cada hora presenta la categoría más "
         "desfavorable). Cada barra representa el porcentaje de horas del año que la estación "
         "registró en cada categoría; en gris se señalan las horas sin dato suficiente (D.I.), ya "
-        "sea por falla de algún equipo o, en el caso de las estaciones incorporadas en 2024, por no "
-        "contar todavía con un ciclo anual completo de operación. Más adelante el informe desglosa "
-        "el comportamiento de cada contaminante por separado.",
+        "sea por falla de algún equipo"
+        + (f" o, en el caso de las estaciones incorporadas en {anio}, por no contar todavía con un ciclo anual "
+           "completo de operación" if any(e["nueva"] and e["anio_inicio"] == anio for e in datos["estaciones"]) else "")
+        + ". Más adelante el informe desglosa el comportamiento de cada contaminante por separado.",
         estilos["cuerpo"],
     ))
 
@@ -898,14 +959,15 @@ def _seccion_horas_categoria(anio, estilos, datos):
         story.append(Paragraph("[Faltan los datos de horas por categoría]", estilos["caption"]))
         return story
 
-    story.append(Paragraph(_texto_horas_categoria(anio, horas), estilos["cuerpo"]))
+    orden = _estaciones_del_anio(anio, datos, ORDEN_ESTACIONES_HORAS)
+    story.append(Paragraph(_texto_horas_categoria(anio, horas, orden), estilos["cuerpo"]))
 
     story.append(KeepTogether([
         Paragraph(
-            "Figura 3. Porcentaje de horas del año según categoría del índice Aire y Salud, por estación.",
+            "§FIG:horas§. Porcentaje de horas del año según categoría del índice Aire y Salud, por estación.",
             estilos["tabla_caption"],
         ),
-        _grafica_horas_categoria(horas),
+        _grafica_horas_categoria(horas, orden + ["AMG"]),
     ]))
     story.append(Spacer(1, 10))
     story.append(_leyenda_categorias_ias())
@@ -931,7 +993,7 @@ def _texto_horas_categoria(anio, datos_estacion, orden_estaciones=ORDEN_ESTACION
         filas.append((est, favorable, desfavorable, di))
 
     frase_intro = (
-        f"La Figura 3 muestra, para cada una de las {len(orden_estaciones)} estaciones de la red, el "
+        f"La §FIG:horas§ muestra, para cada una de las {len(orden_estaciones)} estaciones de la red, el "
         "porcentaje de horas del año clasificadas en cada categoría del Índice Aire y Salud."
     )
 
@@ -1063,21 +1125,21 @@ def _seccion_monoxido_carbono(anio, estilos, datos):
     story.append(_esquema_co())
 
     story += _seccion_perfil_horario_mensual(
-        anio, estilos, datos, "CO", "CO", "ppm", "Figura 5",
+        anio, estilos, datos, "CO", "CO", "ppm", "§FIG:co_perfil§",
         texto=(
             "En el AMG, el CO no excede los límites de la NOM, con el número de días de buena, regular o mala "
             "calidad del aire. Asimismo, se observa la distribución horaria del CO por año para el AMG, donde "
             "se observa una mayor concentración en las primeras horas del día y a finales del día, coincidente "
-            "con la actividad de movilidad que suele llevarse en la ciudad. En la Figura 5 se muestra una mayor "
+            "con la actividad de movilidad que suele llevarse en la ciudad. En la §FIG:co_perfil§ se muestra una mayor "
             "concentración durante los meses de noviembre, diciembre, enero y febrero, coincidente con las festividades."
         ),
     )
     story += _seccion_violines_mensuales(
-        anio, estilos, datos, "CO", "CO", "ppm", "Figura 6",
+        anio, estilos, datos, "CO", "CO", "ppm", "§FIG:co_violin§",
         serie="promedio móvil de 8 horas",
     )
     story += _seccion_mapa_dias_estaciones(
-        anio, estilos, datos, contaminante="CO", nombre="CO", numero_figura="Figura 7",
+        anio, estilos, datos, contaminante="CO", nombre="CO", numero_figura="§FIG:co_mapa§",
         nivel_titulo="h3", serie="máximo diario del promedio móvil de 8 horas", salto_pagina=True, analisis_conciso=True,
     )
     return story
@@ -1153,11 +1215,11 @@ def _seccion_dioxido_nitrogeno(anio, estilos, datos):
     story.append(Spacer(1, 4))
     story.append(_esquema_no2())
     story += _seccion_perfil_horario_mensual(
-        anio, estilos, datos, "NO2", "NO₂", "ppm", "Figura 8",
+        anio, estilos, datos, "NO2", "NO₂", "ppm", "§FIG:no2_perfil§",
         texto=_texto_perfil_no2(anio, (datos.get("perfil_horario") or {}).get("NO2")),
     )
     story += _seccion_violines_mensuales(
-        anio, estilos, datos, "NO2", "NO₂", "ppm", "Figura 9", serie="valor horario",
+        anio, estilos, datos, "NO2", "NO₂", "ppm", "§FIG:no2_violin§", serie="valor horario",
         decimales=3, con_resultados=True,
         nota_final=(
             "Como el registro cubre menos del 75% de los días del año, estas comparaciones son solo de "
@@ -1165,7 +1227,7 @@ def _seccion_dioxido_nitrogeno(anio, estilos, datos):
         ),
     )
     story += _seccion_mapa_dias_estaciones(
-        anio, estilos, datos, contaminante="NO2", nombre="NO₂", numero_figura="Figura 10",
+        anio, estilos, datos, contaminante="NO2", nombre="NO₂", numero_figura="§FIG:no2_mapa§",
         nivel_titulo="h3", serie="máximo horario del día",
     )
     return story
@@ -1248,7 +1310,7 @@ def _texto_perfil_horario(anio, perfil, nombre, unidad, numero_figura, decimales
 
 def _texto_perfil_no2(anio, perfil):
     return _texto_perfil_horario(
-        anio, perfil, "NO₂", "ppm", "Figura 8",
+        anio, perfil, "NO₂", "ppm", "§FIG:no2_perfil§",
         frase_patron="un patrón consistente con la actividad vehicular de la ciudad, principal fuente de este contaminante",
         nota_datos=(f"Las estaciones de la red iniciaron el registro de NO₂ hasta la segunda mitad de {anio}. "
                     "Como el registro cubre menos del 75% de los días del año, el cumplimiento de la NOM no se "
@@ -1307,20 +1369,20 @@ def _seccion_pm10(anio, estilos, datos):
         estilos["cuerpo"],
     ))
     story += _seccion_perfil_horario_mensual(
-        anio, estilos, datos, "PM10", "PM₁₀", "µg/m³", "Figura 11",
+        anio, estilos, datos, "PM10", "PM₁₀", "µg/m³", "§FIG:pm10_perfil§",
         texto=_texto_perfil_horario(
-            anio, (datos.get("perfil_horario") or {}).get("PM10"), "PM₁₀", "µg/m³", "Figura 11", decimales=0,
+            anio, (datos.get("perfil_horario") or {}).get("PM10"), "PM₁₀", "µg/m³", "§FIG:pm10_perfil§", decimales=0,
             frase_patron=("un patrón que suele asociarse con la actividad vehicular y con la menor dispersión "
                           "atmosférica de las primeras horas de la mañana y de la noche"),
         ),
     )
     story += _seccion_violines_mensuales(
-        anio, estilos, datos, "PM10", "PM₁₀", "µg/m³", "Figura 12",
+        anio, estilos, datos, "PM10", "PM₁₀", "µg/m³", "§FIG:pm10_violin§",
         serie="promedio móvil de 24 horas",
         decimales=0, con_resultados=True, salto_pagina=True, resultados_narrativo=True,
     )
     story += _seccion_mapa_dias_estaciones(
-        anio, estilos, datos, contaminante="PM10", nombre="PM₁₀", numero_figura="Figura 13",
+        anio, estilos, datos, contaminante="PM10", nombre="PM₁₀", numero_figura="§FIG:pm10_mapa§",
         nivel_titulo="h3", serie="promedio diario de 24 horas", salto_pagina=True, analisis_resumido=True,
     )
     return story
@@ -1342,20 +1404,20 @@ def _seccion_pm25(anio, estilos, datos):
         estilos["cuerpo"],
     ))
     story += _seccion_perfil_horario_mensual(
-        anio, estilos, datos, "PM2.5", "PM₂.₅", "µg/m³", "Figura 14",
+        anio, estilos, datos, "PM2.5", "PM₂.₅", "µg/m³", "§FIG:pm25_perfil§",
         texto=_texto_perfil_horario(
-            anio, (datos.get("perfil_horario") or {}).get("PM2.5"), "PM₂.₅", "µg/m³", "Figura 14", decimales=0,
+            anio, (datos.get("perfil_horario") or {}).get("PM2.5"), "PM₂.₅", "µg/m³", "§FIG:pm25_perfil§", decimales=0,
             frase_patron=("un patrón que suele asociarse con la actividad vehicular y con la menor dispersión "
                           "atmosférica de las primeras horas de la mañana y de la noche"),
         ),
     )
     story += _seccion_violines_mensuales(
-        anio, estilos, datos, "PM2.5", "PM₂.₅", "µg/m³", "Figura 15",
+        anio, estilos, datos, "PM2.5", "PM₂.₅", "µg/m³", "§FIG:pm25_violin§",
         serie="promedio móvil de 24 horas",
         decimales=0, con_resultados=True,
     )
     story += _seccion_mapa_dias_estaciones(
-        anio, estilos, datos, contaminante="PM2.5", nombre="PM₂.₅", numero_figura="Figura 16",
+        anio, estilos, datos, contaminante="PM2.5", nombre="PM₂.₅", numero_figura="§FIG:pm25_mapa§",
         nivel_titulo="h3", serie="promedio diario de 24 horas",
     )
     return story
@@ -1386,11 +1448,17 @@ def _seccion_dioxido_azufre(anio, estilos, datos):
             "de la red, por lo que no es posible presentar el comportamiento horario de este contaminante ni "
             "evaluar su cumplimiento respecto a la NOM (fuera de operación, FO, en la Tabla 4). Por esta razón, "
             "esta sección no incluye gráficas de concentración; sí se presenta el mosaico de días con calidad "
-            f"Buena o Aceptable del periodo {anio - ANIOS_HISTORICO + 1}–{anio} para los años con registro.",
+            f"Buena o Aceptable del periodo {_inicio_periodo(anio)}–{anio} para los años con registro.",
             estilos["cuerpo"],
         ))
+    if not sin_datos:
+        story += _seccion_perfil_horario_mensual(anio, estilos, datos, "SO2", "SO₂", "ppm", "§FIG:so2_perfil§")
+        story += _seccion_violines_mensuales(
+            anio, estilos, datos, "SO2", "SO₂", "ppm", "§FIG:so2_violin§",
+            serie="valor horario", decimales=3, con_resultados=True,
+        )
     story += _seccion_mapa_dias_estaciones(
-        anio, estilos, datos, contaminante="SO2", nombre="SO₂", numero_figura="Figura 8",
+        anio, estilos, datos, contaminante="SO2", nombre="SO₂", numero_figura="§FIG:so2_mapa§",
         nivel_titulo="h3", serie="máximo horario del día",
     )
     return story
@@ -1446,7 +1514,7 @@ def _hallazgo_horas_categoria(anio, datos):
         )
 
     filas = []
-    for est in ORDEN_ESTACIONES_HORAS:
+    for est in _estaciones_del_anio(anio, datos, ORDEN_ESTACIONES_HORAS):
         cats = horas.get(est, {})
         di = cats.get("D.I.", 0)
         favorable = cats.get("Buena", 0) + cats.get("Aceptable", 0)
@@ -1572,7 +1640,7 @@ def _bullets_hallazgos(anio, datos):
     if b_est:
         bullets.append(b_est)
 
-    b = _hallazgo_cumplimiento_nom(datos)
+    b = _hallazgo_cumplimiento_nom(datos) if datos.get("incluir_cumplimiento_nom", True) else None
     if b:
         bullets.append(b)
 
@@ -1653,20 +1721,20 @@ def _seccion_ozono(anio, estilos, datos):
     story.append(Spacer(1, 4))
     story.append(_esquema_o3())
     story += _seccion_perfil_horario_mensual(
-        anio, estilos, datos, "O3", "O₃", "ppm", "Figura 8",
+        anio, estilos, datos, "O3", "O₃", "ppm", "§FIG:o3_perfil§",
         texto=_texto_perfil_horario(
-            anio, (datos.get("perfil_horario") or {}).get("O3"), "O₃", "ppm", "Figura 8",
+            anio, (datos.get("perfil_horario") or {}).get("O3"), "O₃", "ppm", "§FIG:o3_perfil§",
             frase_patron=("un patrón consistente con su formación fotoquímica, que requiere radiación solar y por eso "
                           "se intensifica en las horas de mayor insolación"),
             limite=0.090, texto_limite="límite horario de la NOM (0.090 ppm)",
         ),
     )
     story += _seccion_violines_mensuales(
-        anio, estilos, datos, "O3", "O₃", "ppm", "Figura 9", serie="valor horario",
+        anio, estilos, datos, "O3", "O₃", "ppm", "§FIG:o3_violin§", serie="valor horario",
         decimales=3, con_resultados=True,
     )
     story += _seccion_mapa_dias_estaciones(
-        anio, estilos, datos, contaminante="O3", nombre="O₃", numero_figura="Figura 10",
+        anio, estilos, datos, contaminante="O3", nombre="O₃", numero_figura="§FIG:o3_mapa§",
         nivel_titulo="h3", serie="máximo horario del día",
     )
     return story
@@ -1687,6 +1755,10 @@ def _seccion_perfil_horario_mensual(anio, estilos, datos, contaminante, nombre, 
     perfil_anio = (datos.get("perfil_horario") or {}).get(contaminante)
     if not perfil_anio:
         story.append(Paragraph("[Faltan los datos del perfil horario mensual]", estilos["caption"]))
+        return story
+    if not any(v is not None for mes in perfil_anio.values() for v in mes.values()):
+        story[:] = [Paragraph(f"En {anio} no se registraron mediciones de {nombre} en la red, por lo que no es "
+                              "posible presentar su comportamiento horario mensual.", estilos["cuerpo"])]
         return story
 
     story.append(KeepTogether([
@@ -1816,6 +1888,10 @@ def _seccion_violines_mensuales(anio, estilos, datos, contaminante, nombre, unid
     else:
         meses_di = ", ".join(MESES_ES[m - 1] for m in idx_di)
     validos = [v for v in mensual.values() if v["valido"]]
+    if not validos:
+        story.append(Paragraph(f"En {anio} no se registraron mediciones suficientes de {nombre} en la red para "
+                               "construir la distribución horaria mensual.", estilos["cuerpo"]))
+        return story
     maximo = max(v["kde_x"][-1] for v in validos) if validos else None
     y_top = maximo * 1.2 if maximo else 1.0
     visibles = [lim for lim in limites if lim["valor"] <= y_top]
@@ -2074,7 +2150,7 @@ def _grafica_perfil_horario_anual(perfil_anio, etiqueta_y):
     return d
 
 
-def _seccion_mapa_dias_estaciones(anio, estilos, datos, contaminante=None, nombre=None, numero_figura="Figura 4",
+def _seccion_mapa_dias_estaciones(anio, estilos, datos, contaminante=None, nombre=None, numero_figura="§FIG:mapa_general§",
                                   nivel_titulo="h2", serie=None, salto_pagina=False, analisis_conciso=False, analisis_resumido=False):
     """Mosaico de mapas de burbujas con los días Buena/Aceptable por estación.
     Sin `contaminante`: IAS global (el contaminante más desfavorable de cada día).
@@ -2098,7 +2174,7 @@ def _seccion_mapa_dias_estaciones(anio, estilos, datos, contaminante=None, nombr
         "número de días: mientras más grande, más días con aire de buena o aceptable calidad. "
         + ("" if contaminante else criterio + ". ")
         + "Así, los mapas permiten comparar tanto las zonas del AMG entre sí como la evolución de cada una de "
-        f"ellas entre {anio - ANIOS_HISTORICO + 1} y {anio}, con la misma escala de tamaño en todos los años.",
+        f"ellas entre {_inicio_periodo(anio)} y {anio}, con la misma escala de tamaño en todos los años.",
         estilos["cuerpo"],
     ))
 
@@ -2124,7 +2200,7 @@ def _seccion_mapa_dias_estaciones(anio, estilos, datos, contaminante=None, nombr
         story.append(Paragraph("[Faltan los datos de días por estación]", estilos["caption"]))
         return story
 
-    orden_anios = [anio - i for i in range(ANIOS_HISTORICO)]
+    orden_anios = [a for a in (anio - i for i in range(ANIOS_HISTORICO)) if a >= PRIMER_ANIO_CON_DATOS]
     anio_inicio_por_estacion = {e["simbolo"]: e["anio_inicio"] for e in datos["estaciones"]}
     story.append(KeepTogether([
         Paragraph(
@@ -2823,7 +2899,8 @@ def _seccion_cumplimiento_nom(anio, estilos, datos):
     story.append(Paragraph(
         "Para cada estación de la red se compara el valor estadístico correspondiente (percentil 99, "
         "promedio o máximo, según lo que establece cada Norma Oficial Mexicana) contra el límite "
-        f"vigente para {anio}. Cuando una estación no alcanza el 75% de días válidos en el año, "
+        "de la NOM vigente en 2026 (año 5 de la norma), criterio que se aplica a todos los años del informe "
+        "para mantener la comparabilidad. Cuando una estación no alcanza el 75% de días válidos en el año, "
         "el resultado se reporta como dato insuficiente (D.I.).",
         estilos["cuerpo"],
     ))
@@ -3269,7 +3346,8 @@ def _tabla_contaminantes(estilos, filas):
         ),
         tabla,
         Paragraph(
-            "* Estación nueva. Los recuadros en color indican los contaminantes que mide cada "
+            ("* Estación nueva. " if any(f["nueva"] for f in filas) else "")
+            + "Los recuadros en color indican los contaminantes que mide cada "
             "estación; en gris se señalan los contaminantes que la estación no mide.",
             estilos["nota"],
         ),
@@ -3331,7 +3409,8 @@ def _construir_story(anio, estilos, datos, con_indice=True):
     story += _seccion_panorama_general(anio, estilos, datos)
     story += _seccion_horas_categoria(anio, estilos, datos)
     story += _seccion_mapa_dias_estaciones(anio, estilos, datos)
-    story += _seccion_cumplimiento_nom(anio, estilos, datos)
+    if datos.get("incluir_cumplimiento_nom", True):
+        story += _seccion_cumplimiento_nom(anio, estilos, datos)
     story += _seccion_monoxido_carbono(anio, estilos, datos)
     if datos.get("incluir_no2", True):
         story += _seccion_dioxido_nitrogeno(anio, estilos, datos)
@@ -3366,6 +3445,8 @@ def generar_informe(anio, salida=None):
         author="SIMAJ",
     )
 
+    _FIG_NUM.clear()
+    _construir_story(anio, estilos, datos)
     story = _construir_story(anio, estilos, datos)
 
     dibujar_portada = _dibujar_portada(anio, datos)

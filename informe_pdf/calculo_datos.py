@@ -36,6 +36,12 @@ SHEETS_POR_ANIO = {
     2021: "1Cf3fvYjsFOi7WIHDhaE8Ly1Z_A4PDERA",
     2020: "1oZ3f6fBlDeXMcFuuGJjE0gW3N3aVoP_8",
     2019: "1CEHHu-H_5zSfoA7BXXOcStxbrCJE0K74",
+    2018: "1pUj_8epUmvptvKaVG5fJml0xw0u_wVc7",
+    2017: "1vvua0CSMZ8_cu76wRKTCCyewvsf4zrFC",
+    2016: "1h3rtPuO9FisBuf70mzM-zUtDzoqhU-JU",
+    2015: "1IF5QOpj6U0MFUMjzlct0tqkx0th5FcXW",
+    2014: "1U2QLj6RzIYsx_uM4gFOXkl_Cof8ZtGjy",
+    2013: "1Sk4WLqcEF9KSgb5TiZe0rT9I3W7DDx9J",
 }
 
 
@@ -753,18 +759,18 @@ def suf_min_yearly(anio):
     return 275 if calendar.isleap(anio) else 274
 
 
-# Límites NOM vigentes para 2024 ("año 3° en la NOM", igual que NOM_PRESETS[2024]
-# en tu notebook). "metodo" describe cómo se evalúa cada renglón, siguiendo la
+# Límites NOM vigentes para 2026 ("año 5° en la NOM", igual que NOM_PRESETS[2026]
+# en tu notebook). Se aplican a todos los años para comparabilidad. "metodo" describe cómo se evalúa cada renglón, siguiendo la
 # metodología de la Tabla 9.2 del informe nacional: percentil 99 anual para los
 # límites de 24h que se evalúan por percentil, promedio o máximo anual para el
 # resto (igual que "tipo" en LIMITES_ANUALES de tu notebook).
-FILAS_NOM_2024 = [
-    {"id": "PM10_24H", "contaminante": "PM10", "simbolo": "PM₁₀", "periodo": "24 horas", "columna": "PM10_AVG_24H", "metodo": "percentil99", "limite": 60, "limite_txt": "Percentil 99 ≤ 60", "unidad": "µg/m³"},
-    {"id": "PM10_ANUAL", "contaminante": "PM10", "simbolo": "PM₁₀", "periodo": "Anual", "columna": "PM10_AVG_24H", "metodo": "promedio", "limite": 28, "limite_txt": "Promedio ≤ 28", "unidad": "µg/m³"},
-    {"id": "PM25_24H", "contaminante": "PM2.5", "simbolo": "PM₂.₅", "periodo": "24 horas", "columna": "PM2.5_AVG_24H", "metodo": "percentil99", "limite": 33, "limite_txt": "Percentil 99 ≤ 33", "unidad": "µg/m³"},
+FILAS_NOM_2026 = [
+    {"id": "PM10_24H", "contaminante": "PM10", "simbolo": "PM₁₀", "periodo": "24 horas", "columna": "PM10_AVG_24H", "metodo": "percentil99", "limite": 50, "limite_txt": "Percentil 99 ≤ 50", "unidad": "µg/m³"},
+    {"id": "PM10_ANUAL", "contaminante": "PM10", "simbolo": "PM₁₀", "periodo": "Anual", "columna": "PM10_AVG_24H", "metodo": "promedio", "limite": 20, "limite_txt": "Promedio ≤ 20", "unidad": "µg/m³"},
+    {"id": "PM25_24H", "contaminante": "PM2.5", "simbolo": "PM₂.₅", "periodo": "24 horas", "columna": "PM2.5_AVG_24H", "metodo": "percentil99", "limite": 25, "limite_txt": "Percentil 99 ≤ 25", "unidad": "µg/m³"},
     {"id": "PM25_ANUAL", "contaminante": "PM2.5", "simbolo": "PM₂.₅", "periodo": "Anual", "columna": "PM2.5_AVG_24H", "metodo": "promedio", "limite": 10, "limite_txt": "Promedio ≤ 10", "unidad": "µg/m³"},
     {"id": "O3_1H", "contaminante": "O3", "simbolo": "O₃", "periodo": "1 hora", "columna": "O3_MAX_1H", "metodo": "maximo", "limite": 0.090, "limite_txt": "Máximo ≤ 0.090", "unidad": "ppm"},
-    {"id": "O3_8H", "contaminante": "O3", "simbolo": "O₃", "periodo": "8 horas", "columna": "O3_MAX_8H", "metodo": "maximo", "limite": 0.060, "limite_txt": "Máximo de 8h ≤ 0.060", "unidad": "ppm"},
+    {"id": "O3_8H", "contaminante": "O3", "simbolo": "O₃", "periodo": "8 horas", "columna": "O3_MAX_8H", "metodo": "maximo", "limite": 0.051, "limite_txt": "Máximo de 8h ≤ 0.051", "unidad": "ppm"},
     {"id": "CO_1H", "contaminante": "CO", "simbolo": "CO", "periodo": "1 hora", "columna": "CO_MAX_1H", "metodo": "maximo", "limite": 26.0, "limite_txt": "Máximo ≤ 26", "unidad": "ppm"},
     {"id": "CO_8H", "contaminante": "CO", "simbolo": "CO", "periodo": "8 horas", "columna": "CO_MAX_8H", "metodo": "maximo", "limite": 9.0, "limite_txt": "Máximo de 8h ≤ 9", "unidad": "ppm"},
     {"id": "NO2_1H", "contaminante": "NO2", "simbolo": "NO₂", "periodo": "1 hora", "columna": "NO2_MAX_1H", "metodo": "maximo", "limite": 0.106, "limite_txt": "Máximo ≤ 0.106", "unidad": "ppm"},
@@ -774,9 +780,9 @@ FILAS_NOM_2024 = [
 ]
 
 
-def calcular_cumplimiento_nom(dfd, anio, filas=FILAS_NOM_2024, estaciones=EST_ORDER_BASE):
+def calcular_cumplimiento_nom(dfd, anio, filas=FILAS_NOM_2026, estaciones=EST_ORDER_BASE):
     """
-    Evalúa, por estación y por cada renglón de FILAS_NOM_2024, si se cumple
+    Evalúa, por estación y por cada renglón de FILAS_NOM_2026, si se cumple
     el límite NOM correspondiente durante 'anio'. 'dfd' es la tabla diaria
     por estación (build_daily_table(dfh), sin la fila AMG).
 
@@ -813,7 +819,7 @@ def calcular_cumplimiento_nom(dfd, anio, filas=FILAS_NOM_2024, estaciones=EST_OR
     return resultado
 
 
-def resumen_cumplimiento_nom(dfd, anio, filas=FILAS_NOM_2024):
+def resumen_cumplimiento_nom(dfd, anio, filas=FILAS_NOM_2026):
     """Convierte calcular_cumplimiento_nom() a una lista serializable a JSON:
     una entrada por renglón, con su metadata y los resultados por estación."""
     resultados = calcular_cumplimiento_nom(dfd, anio, filas=filas)
@@ -867,6 +873,7 @@ def calcular_resumen_anual(ruta_excel, estacion="AMG"):
         "PM10": calcular_violines_mensuales(dfh, "PM10", suavizado=rolling_24h),
         # PM2.5: promedio móvil de 24 horas calculado sobre la serie del AMG
         "PM2.5": calcular_violines_mensuales(dfh, "PM2.5", suavizado=rolling_24h),
+        "SO2": calcular_violines_mensuales(dfh, "SO2"),
     }
     perfil_horario = {pol: calcular_perfil_horario(dfh, pol) for pol in ["PM10", "PM2.5", "O3", "NO2", "SO2", "CO"]}
 
