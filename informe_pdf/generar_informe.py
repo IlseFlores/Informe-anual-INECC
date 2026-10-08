@@ -687,7 +687,17 @@ def _fondo_pagina(anio):
 # ---------------------------------------------------------------------------
 # Secciones del informe
 # ---------------------------------------------------------------------------
-def _seccion_introduccion(anio, estilos):
+def _contaminantes_analizados(datos):
+    nombres = ["monóxido de carbono (CO)"]
+    if datos.get("incluir_no2", True):
+        nombres.append("dióxido de nitrógeno (NO₂)")
+    if datos.get("incluir_so2", True):
+        nombres.append("dióxido de azufre (SO₂)")
+    nombres += ["ozono (O₃)", "partículas PM₁₀", "partículas PM₂.₅"]
+    return nombres
+
+
+def _seccion_introduccion(anio, estilos, datos):
     story = [Paragraph("Introducción", estilos["h2"])]
     parrafos = [
         f"El Informe Anual de Calidad del Aire – Jalisco {anio} presenta un panorama de la calidad del "
@@ -695,11 +705,11 @@ def _seccion_introduccion(anio, estilos):
         "datos generados por el Sistema de Monitoreo Atmosférico de Jalisco (SIMAJ) y validados por el "
         "Instituto Nacional de Ecología y Cambio Climático (INECC).",
 
-        "En este informe se analizan los contaminantes criterio monóxido de carbono (CO), dióxido de "
-        "nitrógeno (NO₂), ozono (O₃), partículas PM₁₀ y partículas PM₂.₅. Además, se presenta una "
-        "evaluación de la calidad del aire basada en el cumplimiento de las Normas Oficiales Mexicanas y "
-        "en el Índice Aire y Salud, así como un análisis del comportamiento de los principales "
-        f"contaminantes registrados en {anio}.",
+        "En este informe se analizan los contaminantes criterio "
+        + _lista_es(_contaminantes_analizados(datos))
+        + ". Además, se presenta una evaluación de la calidad del aire basada en el cumplimiento de las "
+        "Normas Oficiales Mexicanas y en el Índice Aire y Salud, así como un análisis del comportamiento "
+        f"de los principales contaminantes registrados en {anio}.",
 
         "El propósito de este informe es presentar de manera clara y accesible la información sobre la "
         "calidad del aire, identificar los principales contaminantes que afectaron al AMG durante el año "
@@ -1140,7 +1150,7 @@ def _seccion_monoxido_carbono(anio, estilos, datos):
     )
     story += _seccion_mapa_dias_estaciones(
         anio, estilos, datos, contaminante="CO", nombre="CO", numero_figura="§FIG:co_mapa§",
-        nivel_titulo="h3", serie="máximo diario del promedio móvil de 8 horas", salto_pagina=True, analisis_conciso=True,
+        nivel_titulo="h3", serie="máximo diario del promedio móvil de 8 horas", analisis_conciso=True,
     )
     return story
 
@@ -2157,7 +2167,7 @@ def _seccion_mapa_dias_estaciones(anio, estilos, datos, contaminante=None, nombr
     Con `contaminante`: IAS de ese contaminante solo."""
     sufijo = f" de {nombre}" if contaminante else ""
     story = [PageBreak()] if salto_pagina else []
-    story.append(Paragraph(f"Días con calidad del aire Buena o Aceptable por estación{sufijo}", estilos[nivel_titulo]))
+    titulo = Paragraph(f"Días con calidad del aire Buena o Aceptable por estación{sufijo}", estilos[nivel_titulo])
 
     if contaminante:
         criterio = (f"considerando únicamente el {nombre}" + (f" ({serie})" if serie else ""))
@@ -2166,7 +2176,7 @@ def _seccion_mapa_dias_estaciones(anio, estilos, datos, contaminante=None, nombr
 
     mapas = (datos.get("dias_estaciones_contaminante_por_anio") or {}).get(contaminante) if contaminante         else datos.get("dias_estaciones_por_anio")
 
-    story.append(Paragraph(
+    texto_intro = (
         f"Los mapas de la {numero_figura} muestran, año por año, cuántos días tuvo cada estación de monitoreo con "
         "calidad del aire Buena o Aceptable según el Índice Aire y Salud (IAS)"
         + (f", {criterio}" if contaminante else "")
@@ -2174,9 +2184,8 @@ def _seccion_mapa_dias_estaciones(anio, estilos, datos, contaminante=None, nombr
         "número de días: mientras más grande, más días con aire de buena o aceptable calidad. "
         + ("" if contaminante else criterio + ". ")
         + "Así, los mapas permiten comparar tanto las zonas del AMG entre sí como la evolución de cada una de "
-        f"ellas entre {_inicio_periodo(anio)} y {anio}, con la misma escala de tamaño en todos los años.",
-        estilos["cuerpo"],
-    ))
+        f"ellas entre {_inicio_periodo(anio)} y {anio}, con la misma escala de tamaño en todos los años."
+    )
 
     equipo = None
     if contaminante:
@@ -2189,19 +2198,30 @@ def _seccion_mapa_dias_estaciones(anio, estilos, datos, contaminante=None, nombr
         if equipo and not all(equipo.values())
         else "Los puntos grises indican estaciones sin datos en ese año."
     )
-    story.append(Paragraph(
+    texto_puntitas = (
         "Las burbujas con borde punteado corresponden a estaciones que no alcanzaron el 75% de días con "
         "dato en el año (por ejemplo, las que iniciaron operaciones o estuvieron fuera de servicio), por lo "
-        f"que su total no cubre el año completo y no es comparable con el de las demás. {texto_puntos}",
-        estilos["cuerpo"],
-    ))
+        f"que su total no cubre el año completo y no es comparable con el de las demás. {texto_puntos}"
+    )
 
     if not mapas:
+        story.append(titulo)
+        story.append(Paragraph(texto_intro, estilos["cuerpo"]))
+        story.append(Paragraph(texto_puntitas, estilos["cuerpo"]))
         story.append(Paragraph("[Faltan los datos de días por estación]", estilos["caption"]))
         return story
 
     orden_anios = [a for a in (anio - i for i in range(ANIOS_HISTORICO)) if a >= PRIMER_ANIO_CON_DATOS]
     anio_inicio_por_estacion = {e["simbolo"]: e["anio_inicio"] for e in datos["estaciones"]}
+    # El título y los dos párrafos de explicación van en su propio bloque,
+    # separado del mapa: así nunca queda el título solo al final de una
+    # página, pero tampoco arriesgamos que todo el bloque (título + texto +
+    # mosaico) no quepa junto en una sola página.
+    story.append(KeepTogether([
+        titulo,
+        Paragraph(texto_intro, estilos["cuerpo"]),
+        Paragraph(texto_puntitas, estilos["cuerpo"]),
+    ]))
     story.append(KeepTogether([
         Paragraph(
             f"{numero_figura}. Días con calidad del aire Buena o Aceptable por estación{sufijo}, "
@@ -3403,7 +3423,7 @@ def _construir_story(anio, estilos, datos, con_indice=True):
         story.append(Paragraph("Contenido", ParagraphStyle("contenido_titulo", parent=estilos["h2"])))
         story.append(_indice(estilos))
         story.append(PageBreak())
-    story += _seccion_introduccion(anio, estilos)
+    story += _seccion_introduccion(anio, estilos, datos)
     story += _seccion_simaj(anio, estilos, datos)
     story += _seccion_evaluacion_nom(estilos, datos)
     story += _seccion_panorama_general(anio, estilos, datos)
