@@ -885,8 +885,28 @@ def calcular_resumen_anual(ruta_excel, estacion="AMG"):
     cumplimiento_nom = resumen_cumplimiento_nom(dfd, anio)
     cobertura_equipo, contaminantes_ambiguos = calcular_cobertura_equipo(dfh)
 
+    # Categoría IAS dominante por día del AMG (para el calendario de la
+    # Figura 3): {fecha ISO: categoría o None si ese día no tuvo suficiencia}.
+    amg_cat = dfd_all[dfd_all["STATION"] == estacion][["FECHA", "IAS_GLOBAL_CAT_DIA"]]
+    dias_categoria_amg = {
+        (f.isoformat() if hasattr(f, "isoformat") else str(f)): (None if pd.isna(c) else c)
+        for f, c in zip(amg_cat["FECHA"], amg_cat["IAS_GLOBAL_CAT_DIA"])
+    }
+    dias_categoria_amg_contaminante = {}
+    for pol in ("CO", "NO2", "SO2", "O3", "PM10", "PM2.5"):
+        col = f"IAS_{pol}_CAT_DIA"
+        if col not in dfd_all.columns:
+            continue
+        sub = dfd_all[dfd_all["STATION"] == estacion][["FECHA", col]]
+        dias_categoria_amg_contaminante[pol] = {
+            (f.isoformat() if hasattr(f, "isoformat") else str(f)): (None if pd.isna(c) else c)
+            for f, c in zip(sub["FECHA"], sub[col])
+        }
+
     return {
         "anio": anio,
+        "dias_categoria_amg": dias_categoria_amg,
+        "dias_categoria_amg_contaminante": dias_categoria_amg_contaminante,
         "dias_buena_aceptable": dias_buena_aceptable,
         "horas_categoria_calidad": horas_categoria,
         "cumplimiento_nom": cumplimiento_nom,
@@ -913,6 +933,8 @@ def actualizar_historico(anio, url_o_id=None, ruta_excel=None, ruta_resumen=RUTA
     historico = json.loads(ruta_resumen.read_text(encoding="utf-8")) if ruta_resumen.exists() else {}
     entrada = historico.get(str(anio), {})
     entrada["dias_buena_aceptable"] = resultado["dias_buena_aceptable"]
+    entrada["dias_categoria_amg"] = resultado["dias_categoria_amg"]
+    entrada["dias_categoria_amg_contaminante"] = resultado["dias_categoria_amg_contaminante"]
     entrada["horas_categoria_calidad"] = resultado["horas_categoria_calidad"]
     entrada["cumplimiento_nom"] = resultado["cumplimiento_nom"]
     entrada["perfil_horario"] = resultado["perfil_horario"]
