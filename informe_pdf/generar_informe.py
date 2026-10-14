@@ -104,7 +104,7 @@ RUTA_RESUMEN_HISTORICO = DATOS_DIR / "resumen_historico.json"
 
 # Cuántos años hacia atrás se muestran en la serie histórica (Figura 2, etc.)
 ANIOS_HISTORICO = 6
-PRIMER_ANIO_CON_DATOS = 2013
+PRIMER_ANIO_CON_DATOS = 2008
 
 
 def _inicio_periodo(anio):
@@ -457,7 +457,7 @@ def _estilos():
     return {
         "h2": ParagraphStyle(
             "h2", fontName="Montserrat-Bold", fontSize=14, leading=18,
-            textColor=NAVY, spaceBefore=22, spaceAfter=10,
+            textColor=NAVY, spaceBefore=22, spaceAfter=10, keepWithNext=True,
         ),
         "credito_nombre": ParagraphStyle(
             "credito_nombre", fontName="Montserrat-Bold", fontSize=13, leading=17, textColor=NAVY, spaceBefore=0,
@@ -478,7 +478,7 @@ def _estilos():
         ),
         "h3": ParagraphStyle(
             "h3", fontName="Montserrat-Bold", fontSize=11.5, leading=15,
-            textColor=NAVY, spaceBefore=14, spaceAfter=8,
+            textColor=NAVY, spaceBefore=14, spaceAfter=8, keepWithNext=True,
         ),
         "cuerpo": ParagraphStyle(
             "cuerpo", fontName="Montserrat", fontSize=10.3, leading=16.5,
@@ -688,12 +688,19 @@ def _fondo_pagina(anio):
 # Secciones del informe
 # ---------------------------------------------------------------------------
 def _contaminantes_analizados(datos):
-    nombres = ["monóxido de carbono (CO)"]
-    if datos.get("incluir_no2", True):
+    nombres = []
+    if _hay_datos_anio(datos, "CO"):
+        nombres.append("monóxido de carbono (CO)")
+    if datos.get("incluir_no2", True) and _hay_datos_anio(datos, "NO2"):
         nombres.append("dióxido de nitrógeno (NO₂)")
-    if datos.get("incluir_so2", True):
+    if datos.get("incluir_so2", True) and _hay_datos_anio(datos, "SO2"):
         nombres.append("dióxido de azufre (SO₂)")
-    nombres += ["ozono (O₃)", "partículas PM₁₀", "partículas PM₂.₅"]
+    if _hay_datos_anio(datos, "O3"):
+        nombres.append("ozono (O₃)")
+    if _hay_datos_anio(datos, "PM10"):
+        nombres.append("partículas PM₁₀")
+    if _hay_datos_anio(datos, "PM2.5"):
+        nombres.append("partículas PM₂.₅")
     return nombres
 
 
@@ -2212,16 +2219,27 @@ def _seccion_mapa_dias_estaciones(anio, estilos, datos, contaminante=None, nombr
         return story
 
     orden_anios = [a for a in (anio - i for i in range(ANIOS_HISTORICO)) if a >= PRIMER_ANIO_CON_DATOS]
+    sin_ningun_dato = contaminante and not any(
+        v["dias"] > 0 for a in orden_anios for v in mapas.get(a, {}).values()
+    )
+    if sin_ningun_dato:
+        story.append(titulo)
+        story.append(Paragraph(
+            f"No se cuenta con registro de {nombre} en ninguna estación durante "
+            f"{orden_anios[-1]}–{orden_anios[0]}, por lo que no es posible presentar el mapa de días con "
+            "calidad Buena o Aceptable para este contaminante en ese periodo.",
+            estilos["cuerpo"],
+        ))
+        return story
+
     anio_inicio_por_estacion = {e["simbolo"]: e["anio_inicio"] for e in datos["estaciones"]}
-    # El título y los dos párrafos de explicación van en su propio bloque,
-    # separado del mapa: así nunca queda el título solo al final de una
-    # página, pero tampoco arriesgamos que todo el bloque (título + texto +
-    # mosaico) no quepa junto en una sola página.
-    story.append(KeepTogether([
-        titulo,
-        Paragraph(texto_intro, estilos["cuerpo"]),
-        Paragraph(texto_puntitas, estilos["cuerpo"]),
-    ]))
+    # El título usa keepWithNext (ver _estilos): nunca queda solo al final de
+    # una página, pero el texto fluye libre -- no forzamos un bloque grande
+    # con el mosaico, que es lo que dejaba páginas a medias cuando ese bloque
+    # tampoco cabía completo.
+    story.append(titulo)
+    story.append(Paragraph(texto_intro, estilos["cuerpo"]))
+    story.append(Paragraph(texto_puntitas, estilos["cuerpo"]))
     story.append(KeepTogether([
         Paragraph(
             f"{numero_figura}. Días con calidad del aire Buena o Aceptable por estación{sufijo}, "
@@ -3413,6 +3431,16 @@ def _pagina_creditos(estilos, datos):
     return pagina
 
 
+def _hay_datos_anio(datos, pol_datos):
+    """True si el contaminante (nombre de columna de calculo_datos.py, p. ej.
+    "PM2.5") tuvo al menos una hora con dato en el año del informe. Se usa
+    para omitir la sección completa de un contaminante (título incluido)
+    cuando no hay nada que mostrar ese año, en vez de dejar la sección con
+    puros avisos de "sin datos"."""
+    perfil = (datos.get("perfil_horario") or {}).get(pol_datos) or {}
+    return any(v is not None for mes in perfil.values() for v in mes.values())
+
+
 def _construir_story(anio, estilos, datos, con_indice=True):
     story = [PageBreak()]
     creditos = _pagina_creditos(estilos, datos)
@@ -3431,15 +3459,22 @@ def _construir_story(anio, estilos, datos, con_indice=True):
     story += _seccion_mapa_dias_estaciones(anio, estilos, datos)
     if datos.get("incluir_cumplimiento_nom", True):
         story += _seccion_cumplimiento_nom(anio, estilos, datos)
-    story += _seccion_monoxido_carbono(anio, estilos, datos)
-    if datos.get("incluir_no2", True):
+    if _hay_datos_anio(datos, "CO"):
+        story += _seccion_monoxido_carbono(anio, estilos, datos)
+    if datos.get("incluir_no2", True) and _hay_datos_anio(datos, "NO2"):
         story += _seccion_dioxido_nitrogeno(anio, estilos, datos)
-    if datos.get("incluir_so2", True):
+    if datos.get("incluir_so2", True) and _hay_datos_anio(datos, "SO2"):
         story += _seccion_dioxido_azufre(anio, estilos, datos)
-    story += _seccion_ozono(anio, estilos, datos)
-    story += _seccion_particulas_suspendidas(anio, estilos, datos)
-    story += _seccion_pm10(anio, estilos, datos)
-    story += _seccion_pm25(anio, estilos, datos)
+    if _hay_datos_anio(datos, "O3"):
+        story += _seccion_ozono(anio, estilos, datos)
+    hay_pm10 = _hay_datos_anio(datos, "PM10")
+    hay_pm25 = _hay_datos_anio(datos, "PM2.5")
+    if hay_pm10 or hay_pm25:
+        story += _seccion_particulas_suspendidas(anio, estilos, datos)
+    if hay_pm10:
+        story += _seccion_pm10(anio, estilos, datos)
+    if hay_pm25:
+        story += _seccion_pm25(anio, estilos, datos)
     story += _seccion_hallazgos(anio, estilos, datos)
     story += _seccion_bibliografia(anio, estilos, datos)
     return story
