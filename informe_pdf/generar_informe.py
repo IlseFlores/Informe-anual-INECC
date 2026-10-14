@@ -871,6 +871,25 @@ def _seccion_panorama_general(anio, estilos, datos):
         _grafica_dias_buena_aceptable(serie),
     ]))
 
+    dias_categoria = datos.get("dias_categoria_amg")
+    if dias_categoria:
+        story.append(Spacer(1, 10))
+        story.append(Paragraph(
+            f"La §FIG:calendario§ muestra la categoría del Índice Aire y Salud del AMG día por día durante "
+            f"{anio}, lo que permite ver de un vistazo si hay temporadas del año con peor o mejor calidad "
+            "del aire que otras.",
+            estilos["cuerpo"],
+        ))
+        story.append(KeepTogether([
+            Paragraph(
+                f"§FIG:calendario§. Categoría del Índice Aire y Salud del AMG, día por día, {anio}.",
+                estilos["tabla_caption"],
+            ),
+            _grafica_calendario_dias_amg(dias_categoria, anio),
+            Spacer(1, 4),
+            _leyenda_categorias_ias(),
+        ]))
+
     return story
 
 
@@ -949,6 +968,88 @@ def _grafica_dias_buena_aceptable(serie):
                      fillColor=TEXT, textAnchor="middle"))
 
     return d
+
+
+def _grafica_calendario_dias_amg(dias_categoria, anio):
+    """Calendario tipo "mapa de calor" (como el de contribuciones de GitHub):
+    un cuadro por día del año, coloreado según la categoría del IAS del AMG
+    ese día, en una sola tira de 7 filas (días de la semana) por ~53 columnas
+    (semanas). Compacto a propósito para no competir por espacio con las
+    demás figuras."""
+    import datetime as _dt
+
+    por_fecha = {}
+    for fecha_iso, cat in dias_categoria.items():
+        fecha = _dt.date.fromisoformat(fecha_iso[:10])
+        por_fecha[fecha] = cat
+
+    inicio = _dt.date(anio, 1, 1)
+    fin = _dt.date(anio, 12, 31)
+    primer_lunes = inicio - _dt.timedelta(days=inicio.weekday())
+    n_semanas = -(-((fin - primer_lunes).days + 1) // 7)
+
+    pad_izq, pad_arriba = 20, 12
+    paso = (CONTENT_WIDTH - pad_izq) / n_semanas
+    celda = paso - 1.8
+    alto = pad_arriba + 7 * paso
+
+    d = Drawing(CONTENT_WIDTH, alto)
+
+    dias_es = ["L", "M", "M", "J", "V", "S", "D"]
+    for fila in (0, 2, 4, 6):
+        y = alto - pad_arriba - (fila + 1) * paso + (paso - celda) / 2
+        d.add(String(pad_izq - 4, y, dias_es[fila], fontName="Montserrat", fontSize=6.3,
+                     fillColor=MUTED, textAnchor="end"))
+
+    meses_es = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+    mes_col = {}
+    fecha = primer_lunes
+    col = 0
+    while fecha <= fin:
+        for fila in range(7):
+            if inicio <= fecha <= fin:
+                color = COLOR_CATEGORIA_IAS.get(por_fecha.get(fecha), COLOR_CATEGORIA_IAS["D.I."])
+                x = pad_izq + col * paso
+                y = alto - pad_arriba - (fila + 1) * paso
+                d.add(Rect(x, y, celda, celda, fillColor=color, strokeColor=colors.white, strokeWidth=0.5))
+                if fecha.day == 1 and fecha.month not in mes_col:
+                    mes_col[fecha.month] = col
+            fecha += _dt.timedelta(days=1)
+        col += 1
+
+    for mes, col in mes_col.items():
+        x = pad_izq + col * paso
+        d.add(String(x, alto - pad_arriba + 3, meses_es[mes - 1], fontName="Montserrat-Bold", fontSize=7,
+                     fillColor=NAVY))
+
+    return d
+
+
+def _seccion_calendario_contaminante(anio, estilos, datos, contaminante, nombre, fig_token):
+    """Calendario de la §FIG:<fig_token>§: igual que el de Panorama general,
+    pero con la categoría IAS de un solo contaminante en vez de la dominante
+    entre los seis. Se omite si no hay ningún día con categoría ese año."""
+    dias_categoria = (datos.get("dias_categoria_amg_contaminante") or {}).get(contaminante)
+    if not dias_categoria or not any(dias_categoria.values()):
+        return []
+    token = f"§FIG:{fig_token}§"
+    return [
+        Paragraph(
+            f"La {token} muestra la categoría del Índice Aire y Salud del AMG, considerando únicamente el "
+            f"{nombre}, día por día durante {anio}.",
+            estilos["cuerpo"],
+        ),
+        KeepTogether([
+            Paragraph(
+                f"{token}. Categoría del Índice Aire y Salud del AMG de {nombre}, día por día, {anio}.",
+                estilos["tabla_caption"],
+            ),
+            _grafica_calendario_dias_amg(dias_categoria, anio),
+            Spacer(1, 4),
+            _leyenda_categorias_ias(),
+        ]),
+        Spacer(1, 10),
+    ]
 
 
 def _estaciones_del_anio(anio, datos, orden):
@@ -1155,6 +1256,7 @@ def _seccion_monoxido_carbono(anio, estilos, datos):
         anio, estilos, datos, "CO", "CO", "ppm", "§FIG:co_violin§",
         serie="promedio móvil de 8 horas",
     )
+    story += _seccion_calendario_contaminante(anio, estilos, datos, "CO", "CO", "co_calendario")
     story += _seccion_mapa_dias_estaciones(
         anio, estilos, datos, contaminante="CO", nombre="CO", numero_figura="§FIG:co_mapa§",
         nivel_titulo="h3", serie="máximo diario del promedio móvil de 8 horas", analisis_conciso=True,
@@ -1243,6 +1345,7 @@ def _seccion_dioxido_nitrogeno(anio, estilos, datos):
             "referencia y el cumplimiento de la NOM no se evalúa para este contaminante (D.I. en la Tabla 4)."
         ),
     )
+    story += _seccion_calendario_contaminante(anio, estilos, datos, "NO2", "NO₂", "no2_calendario")
     story += _seccion_mapa_dias_estaciones(
         anio, estilos, datos, contaminante="NO2", nombre="NO₂", numero_figura="§FIG:no2_mapa§",
         nivel_titulo="h3", serie="máximo horario del día",
@@ -1398,6 +1501,7 @@ def _seccion_pm10(anio, estilos, datos):
         serie="promedio móvil de 24 horas",
         decimales=0, con_resultados=True, salto_pagina=True, resultados_narrativo=True,
     )
+    story += _seccion_calendario_contaminante(anio, estilos, datos, "PM10", "PM₁₀", "pm10_calendario")
     story += _seccion_mapa_dias_estaciones(
         anio, estilos, datos, contaminante="PM10", nombre="PM₁₀", numero_figura="§FIG:pm10_mapa§",
         nivel_titulo="h3", serie="promedio diario de 24 horas", salto_pagina=True, analisis_resumido=True,
@@ -1433,6 +1537,7 @@ def _seccion_pm25(anio, estilos, datos):
         serie="promedio móvil de 24 horas",
         decimales=0, con_resultados=True,
     )
+    story += _seccion_calendario_contaminante(anio, estilos, datos, "PM2.5", "PM₂.₅", "pm25_calendario")
     story += _seccion_mapa_dias_estaciones(
         anio, estilos, datos, contaminante="PM2.5", nombre="PM₂.₅", numero_figura="§FIG:pm25_mapa§",
         nivel_titulo="h3", serie="promedio diario de 24 horas",
@@ -1474,6 +1579,7 @@ def _seccion_dioxido_azufre(anio, estilos, datos):
             anio, estilos, datos, "SO2", "SO₂", "ppm", "§FIG:so2_violin§",
             serie="valor horario", decimales=3, con_resultados=True,
         )
+    story += _seccion_calendario_contaminante(anio, estilos, datos, "SO2", "SO₂", "so2_calendario")
     story += _seccion_mapa_dias_estaciones(
         anio, estilos, datos, contaminante="SO2", nombre="SO₂", numero_figura="§FIG:so2_mapa§",
         nivel_titulo="h3", serie="máximo horario del día",
@@ -1750,6 +1856,7 @@ def _seccion_ozono(anio, estilos, datos):
         anio, estilos, datos, "O3", "O₃", "ppm", "§FIG:o3_violin§", serie="valor horario",
         decimales=3, con_resultados=True,
     )
+    story += _seccion_calendario_contaminante(anio, estilos, datos, "O3", "O₃", "o3_calendario")
     story += _seccion_mapa_dias_estaciones(
         anio, estilos, datos, contaminante="O3", nombre="O₃", numero_figura="§FIG:o3_mapa§",
         nivel_titulo="h3", serie="máximo horario del día",
