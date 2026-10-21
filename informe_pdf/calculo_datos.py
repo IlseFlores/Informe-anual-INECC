@@ -30,6 +30,7 @@ RUTA_RESUMEN_HISTORICO = BASE_DIR / "datos" / "resumen_historico.json"
 # con el link puede ver"). Se descargan vía el endpoint de exportación a xlsx.
 # ---------------------------------------------------------------------------
 SHEETS_POR_ANIO = {
+    2025: "11orkGrpXuvhTPGRKRZbMP8GildztPdcW",
     2024: "1MuEqhq4XUXP9ViIy_QSHkL1kpJwXe40T",
     2023: "15A5ttGasHk3tbAwgv3-ru82X3ANDimIm",
     2022: "1-AYGOl2Ya_YAa3s555qr9kzHVEGfolOr",

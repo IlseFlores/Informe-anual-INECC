@@ -329,13 +329,14 @@ def _cargar_resumen_historico():
 
 def _datos_del_anio(anio):
     if anio not in DATOS_POR_ANIO:
-        if not (2013 <= anio < min(DATOS_POR_ANIO)):
+        historico = _cargar_resumen_historico()
+        if str(anio) not in historico:
             anios_disp = ", ".join(str(a) for a in sorted(DATOS_POR_ANIO))
             raise ValueError(
-                f"No hay datos configurados para el año {anio}. "
-                f"Años disponibles: {anios_disp}."
+                f"No hay datos configurados para el año {anio} y tampoco hay nada calculado para "
+                f"ese año en el histórico. Años con plantilla propia: {anios_disp}."
             )
-        return _datos_anio_anterior(anio)
+        return _datos_anio_sin_plantilla(anio)
     datos = dict(DATOS_POR_ANIO[anio])
     # Copia profunda de "estaciones" (y su "contaminantes" anidado): más abajo
     # se puede sobreescribir por estación con la cobertura calculada del año,
@@ -344,17 +345,21 @@ def _datos_del_anio(anio):
     return _fusionar_historico(anio, datos)
 
 
-def _datos_anio_anterior(anio):
-    """Informe de un año sin configuración propia: parte de la plantilla de
-    2024, solo con las estaciones que ya existían, sin la tabla de cumplimiento
-    de NOM (no hay límites de ese año) y sin excepciones de equipo de 2024."""
-    base = copy.deepcopy(DATOS_POR_ANIO[min(DATOS_POR_ANIO)])
+def _datos_anio_sin_plantilla(anio):
+    """Informe de un año sin configuración propia (antes o después del año con
+    plantilla, hoy 2024): parte de esa plantilla, solo con las estaciones que
+    ya existían ese año, sin excepciones de equipo específicas de 2024 y sin
+    la tabla de cumplimiento de NOM. El mapa de la red usa la imagen de 10
+    estaciones solo si ese año tuvo menos estaciones que la plantilla."""
+    plantilla = DATOS_POR_ANIO[min(DATOS_POR_ANIO)]
+    base = copy.deepcopy(plantilla)
     base["estaciones"] = [e for e in base["estaciones"] if e["anio_inicio"] <= anio]
     base["equipo_confirmado_manual"] = {}
     base["incluir_cumplimiento_nom"] = False
     base["incluir_tabla_estaciones"] = False
     base["nota_no2"] = None
-    base["imagen_red_monitoreo"] = IMG_DIR / "red_monitoreo_10_estaciones.png"
+    if len(base["estaciones"]) < len(plantilla["estaciones"]):
+        base["imagen_red_monitoreo"] = IMG_DIR / "red_monitoreo_10_estaciones.png"
     entrada = _cargar_resumen_historico().get(str(anio), {})
     sin_datos_red = set(entrada.get("contaminantes_ambiguos", []))
     base["incluir_no2"] = "NO2" not in sin_datos_red
@@ -2376,7 +2381,7 @@ def _seccion_mapa_dias_estaciones(anio, estilos, datos, contaminante=None, nombr
         parrafos_analisis = _analisis_mapas_dias(anio, mapas, nombres, orden_anios, nombre_pol=nombre if contaminante else None,
                                                  nuevas=nuevas, mes_nuevas=datos.get("mes_incorporacion_nuevas", ""))
     for parrafo in parrafos_analisis:
-        story.append(Paragraph(parrafo, estilos["cuerpo"]))
+        story.append(KeepTogether([Paragraph(parrafo, estilos["cuerpo"])]))
     return story
 
 
